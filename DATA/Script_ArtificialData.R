@@ -1,4 +1,4 @@
-#Script that 1) creates artificial data and 2) reads in the artificial data such that they comply with Script_MCsimulation_size_power.R
+#Script that 1) creates artificial data; see  https://doi.org/10.1002/cncr.33852
 
 cancerdatasets = list(Breastdata1,CLLdata1,Colorectaldata1,Endometrialdata1,HLdata1,NHLdata1,Ovariandata1,Thyroiddata1)
 
