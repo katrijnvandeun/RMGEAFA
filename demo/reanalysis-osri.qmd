@@ -4,6 +4,10 @@ format: html
 editor: visual
 ---
 
+In this application, we perform a reanalysis of the data reported in De Roover & Vermunt (2019):
+
+De Roover, K., & Vermunt, J. K. (2019). On the exploratory road to unraveling factor loading non-invariance: A new multigroup rotation approach. Structural Equation Modeling: A Multidisciplinary Journal, 26(6), 905-923.
+
 # Data preparation
 
 ## Imports
@@ -31,7 +35,7 @@ OSRI <- read.csv("../data/OSRI_osfDeRoover.csv", sep = ";")
 table(OSRI$orientation)
 ```
 
-Total sample size matches what is reported in De Roover & Vermunt but group sizes not. Upon checking if their group sizes correspond to Q44 and Q1, appeared to be the latter (Q1).
+The total sample size matches what is reported in De Roover & Vermunt (2019) but group sizes not. Upon checking if they erroneously used one of the questionnaire items as the indicator of sexual orientation, this appeared to be the case (the scores on Q1 were used as the indicator of sexual orientation). This mistake probably also explains why their results deviate strongly from what can be expected based upon the design of the questionnaire.
 
 ## Data wrangling
 
@@ -53,7 +57,7 @@ DATA <- list(matrix1, matrix2, matrix3, matrix4, matrix5)
 G <- 5
 ```
 
-Number of factors set in correspondence with literature:
+We set the number of factors in correspondence with the design of the questionnaire (2 factors):
 
 ```{r}
 R <- 2
@@ -81,11 +85,13 @@ source("../R/performance-measures.R")
 
 ## Model selection
 
+To determine the number of nonzero loadings and the strength of fusion of the loadings between the five groups, the sequential model selection strategy is used. Note that this takes a bit of time (a few minutes).
+
 ```{r}
 model <- seqstrategy(DATA, R = R, SP = 0.9, ALPH = 0.1, THR = 0.05) # sequential strategy
 ```
 
-Inspect results:
+We inspect the results as follows:
 
 ```{r}
 model$details
@@ -93,16 +99,21 @@ model$cardinality
 model$lambda
 ```
 
+Note that the selected number of nonzero loadings is close to what can be expected as the questionnaire is designed to have 22 items that measure masculinity and 22 femininity.
+
 ## Stabilize solution
+
+To save computing time, the sequential strategy uses a single starting value. Therefore, for the selected model, we perform an additional analysis that is based on multiple starting values. This analysis takes a few minutes.
 
 ```{r}
 selmodel <- MULTISTART(DATA, R, CARD = model$cardinality, LAMBDA = model$lambda, SP = seq(0.1, 0.9, by = 0.1), ALPH = seq(0.1, 0.9, by = 0.1), MAXITER = 20, EPS = 1e-4)
 L <- selmodel$loadings
 Loadings <- round(cbind(L[[1]], L[[2]], L[[3]], L[[4]], L[[5]]), 2)
+colnames(Loadings) <- c("He1","He2","Bi1","Bi2","Ho1","Ho2","A1","A2","O1","O2")
 Loadings
 ```
 
-Check that loadings \~= correlation:
+The loadings estimated by Regularized MGEAFA are approximately equal to the correlation of the observed variable with the estimated factor scores: the fusion penalty introduces shrinkage (over groups) and the cardinality constraint results in zero loadings. We illustrate this with the loadings of the variables on the first factor for the first group.
 
 ```{r}
 rbind(cor(selmodel$scores[[1]][, 1], matrix1), selmodel$loadings[[1]][, 1])
@@ -110,7 +121,7 @@ rbind(cor(selmodel$scores[[1]][, 1], matrix1), selmodel$loadings[[1]][, 1])
 
 ## Inspect results
 
-Item-similarity of loadings over groups:
+Here, we focus on inpecting the similarity of the loadings over groups. First, we create two matrices, one with the loadings on the first factor and one with those on the second factor.
 
 ```{r}
 concL1 <- c()
@@ -126,14 +137,14 @@ concL1
 concL2
 ```
 
-Variability loadings over groups:
+To get an indication of the extent of measure noninvariance of each of the items, dissimilarity over the groups is calculated as the standard deviation of the loadings over groups (per factor and summed):
 
 ```{r}
 round(sqrt(diag(var(t(concL1)))) + sqrt(diag(var(t(concL2)))), 3)
-# 10 items:32, 12, 14, 25, 22, 20, 13, 21, 11, 38
+# 10 items displaying noninvariance:32, 12, 14, 25, 22, 20, 13, 21, 11, 38
 ```
 
-Items that load 0 on both factors:
+We also check if there are items that load (almost) 0 on both factors as this indicates that these should probably be removed from the questionnaire.
 
 ```{r}
 index <- 1:44
@@ -141,11 +152,11 @@ index[rowSums(abs(cbind(concL1, concL2))) < 0.05]
 # items 1 and 7
 ```
 
-Items with cross loadings:
+The following items have cross loadings and therefore deviate from the expected structure (each item loading only on one of the two factors):
 
 ```{r}
 index[abs(concL1) > 0.05 & abs(concL2) > 0.05]
-# items 9,13,20,21,22,34
+# items 9,13,21,22,34
 ```
 
 ## Save results
@@ -162,7 +173,7 @@ Write loadings to csv:
 write.table(Loadings, file = "ReanalysisOSRIGeneratedFiles/OSRI_loadings_RegMGEFA.txt", dec = ",", sep = "\t")
 ```
 
-Save item-similarity of loadings over groups:
+Save concatenaed loadings over groups and per factor:
 
 ```{r}
 save(concL1, file = "ReanalysisOSRIGeneratedFiles/OSRI_concl1.Rdata")
