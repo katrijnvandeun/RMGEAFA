@@ -1,0 +1,344 @@
+---
+title: "Simulation"
+format: html
+editor: visual
+---
+
+# Data Preparation
+
+## Imports
+
+```{r}
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+getwd()
+rm(list = ls())
+```
+
+```{r}
+library(MASS)
+```
+
+```{r}
+source("../R/simulation.R")
+```
+
+## Function calls
+
+Run all simulation and join the results:
+
+```{r}
+simulation_results <- run_simulations()
+DATASET <- join_simulation_results(simulation_results)
+```
+
+Get structured data:
+
+```{r}
+RESULT <- DATASET$RESULT
+dataG2R2 <- DATASET$G2R2
+dataG2R4 <- DATASET$G2R4
+dataG4R2 <- DATASET$G4R2
+dataG4R4 <- DATASET$G4R4
+```
+
+# Exploration
+
+## Preliminary exploration
+
+```{r}
+colSums(RESULT[, 1:6] == 0) # preliminary exploration
+par(mar = c(2, 2, 2, 2))
+hist(rowSums(RESULT[, 1:6])) # find difficult datasets/conditions
+RESULT[rowSums(RESULT[, 1:6]) > 20, ] # 16 loading differences, CL0.4/PL shift, 4G4R
+```
+
+```{r}
+sum(RESULT[, 7] < 0.7) # 1 Tucker congruence
+sum(RESULT[, 7] < 0.85) # 22
+sum(RESULT[, 7] < 0.95) # 39
+```
+
+## Make table to compare with De Roover's results
+
+```{r}
+TABLE <- matrix(nrow = 16, ncol = 3) # %datasets no FP/FN for fusion and simple structure, everything correct
+colnames(TABLE) <- c("FUSION", "SIMPLE S.", "BOTH")
+```
+
+Find number of datasets 100% correct: OVERALL
+
+```{r}
+fusion_ISF <- sum(rowSums(RESULT[, 5:6] == 0) == 2) # ISF
+simple_ISF <- sum(rowSums(RESULT[, 1:4] == 0) == 4) # ISF
+both_ISF <- sum(rowSums(RESULT[, 1:6] == 0) == 6) # ISF
+TABLE[16, ] <- c(fusion_ISF, simple_ISF, both_ISF) / 8000
+```
+
+Find number of datasets 100% correct: Per nr of components
+
+```{r}
+Rvec <- c(2, 4)
+Gvec <- c(2, 4)
+for (r in 1:2) {
+  sel <- which(RESULT$R == Rvec[r])
+  fusion_ISF <- sum(rowSums(RESULT[sel, 5:6] == 0) == 2) # ISF
+  simple_ISF <- sum(rowSums(RESULT[sel, 1:4] == 0) == 4) # ISF
+  both_ISF <- sum(rowSums(RESULT[sel, 1:6] == 0) == 6) # ISF
+  TABLE[r, ] <- c(fusion_ISF, simple_ISF, both_ISF) / 4000
+}
+```
+
+Find number of datasets 100% correct: Per sample size
+
+```{r}
+Nvec <- c(50, 200, 600, 1000)
+for (n in 1:4) {
+  sel <- which(RESULT$n == Nvec[n])
+  fusion_ISF <- sum(rowSums(RESULT[sel, 5:6] == 0) == 2) # ISF
+  simple_ISF <- sum(rowSums(RESULT[sel, 1:4] == 0) == 4) # ISF
+  both_ISF <- sum(rowSums(RESULT[sel, 1:6] == 0) == 6) # ISF
+  TABLE[2 + n, ] <- c(fusion_ISF, simple_ISF, both_ISF) / 2000
+}
+```
+
+Find number of datasets 100% correct: Per group size
+
+```{r}
+for (q in 1:2) {
+  sel <- which(RESULT$G == Gvec[q])
+  fusion_ISF <- sum(rowSums(RESULT[sel, 5:6] == 0) == 2) # ISF
+  simple_ISF <- sum(rowSums(RESULT[sel, 1:4] == 0) == 4) # ISF
+  both_ISF <- sum(rowSums(RESULT[sel, 1:6] == 0) == 6) # ISF
+  TABLE[6 + q, ] <- c(fusion_ISF, simple_ISF, both_ISF) / 4000
+}
+```
+
+### Specific conditions
+
+1.Primary loading shifts: 4800 data sets.
+
+```{r}
+sel <- which(RESULT$Condition == "PL shift" | RESULT$Condition == "PL0.2" | RESULT$Condition == "PL0.4")
+fusion_ISF <- sum(rowSums(RESULT[sel, 5:6] == 0) == 2) # ISF
+simple_ISF <- sum(rowSums(RESULT[sel, 1:4] == 0) == 4) # ISF
+both_ISF <- sum(rowSums(RESULT[sel, 1:6] == 0) == 6) # ISF
+TABLE[9, ] <- c(fusion_ISF, simple_ISF, both_ISF) / length(sel)
+```
+
+2.Remaining conditions.
+
+```{r}
+conds <- c("CL0.4", "CL0.2", "PL0.4", "PL0.2")
+for (c in 1:4) {
+  sel <- which(RESULT$Condition == conds[c])
+  fusion_ISF <- sum(rowSums(RESULT[sel, 5:6] == 0) == 2) # ISF
+  simple_ISF <- sum(rowSums(RESULT[sel, 1:4] == 0) == 4) # ISF
+  both_ISF <- sum(rowSums(RESULT[sel, 1:6] == 0) == 6) # ISF
+  TABLE[9 + c, ] <- c(fusion_ISF, simple_ISF, both_ISF) / length(sel)
+}
+```
+
+Find number of datasets 100%correct: Per group size
+
+```{r}
+Dvec <- c(4, 16)
+for (d in 1:2) {
+  sel <- which(RESULT$Diff == Dvec[d])
+  fusion_ISF <- sum(rowSums(RESULT[sel, 5:6] == 0) == 2) # ISF
+  simple_ISF <- sum(rowSums(RESULT[sel, 1:4] == 0) == 4) # ISF
+  both_ISF <- sum(rowSums(RESULT[sel, 1:6] == 0) == 6) # ISF
+  TABLE[13 + d, ] <- c(fusion_ISF, simple_ISF, both_ISF) / 4000
+}
+```
+
+### Save results
+
+```{r}
+write.table(TABLE, file = "SimulationGeneratedFiles/simresultsNEWv2.txt", sep = "\t", dec = ",")
+```
+
+# Plotting
+
+## Imports
+
+```{r}
+library(ggplot2)
+library(ggsci)
+```
+
+## Configuring plots
+
+Set grid labels for the graph:
+
+```{r}
+Nlabels <- c("50" = "N = 50", "200" = "N = 200", "600" = "N = 600", "1000" = "N = 1000")
+glabels <- c("4" = "4 differences", "16" = "16 differences")
+```
+
+## Recovery Rate
+
+Boxplot for 2 groups 2 components:
+
+```{r}
+pdf("SimulationGeneratedFiles/Recovery Rate G2R2.pdf", width = 8, height = 10)
+ggplot(data = dataG2R2, aes(x = condition, y = Recovery)) +
+  geom_boxplot() +
+  xlab("Types of Loading Differences") +
+  ylab("Recovery Rate") +
+  ylim(.6, 1) +
+  theme(
+    panel.background = element_rect(fill = "grey96"), axis.text = element_text(size = 12),
+    axis.title = element_text(size = 15), legend.text = element_text(size = 15),
+    legend.title = element_text(size = 15), strip.text = element_text(size = 12)
+  ) +
+  facet_grid(Group_size ~ diff, labeller = labeller(
+    Group_size = as_labeller(Nlabels),
+    diff = as_labeller(glabels)
+  ))
+dev.off()
+```
+
+Boxplot for 2 groups 4 components:
+
+```{r}
+png("SimulationGeneratedFiles/Recovery Rate G2R4.png", width = 3100, height = 2100, res = 300)
+ggplot(data = dataG2R4, aes(x = condition, y = Recovery)) +
+  geom_boxplot() +
+  xlab("Types of Loading Differences") +
+  ylab("Recovery Rate") +
+  ylim(.6, 1) +
+  theme(
+    panel.background = element_rect(fill = "grey96"), axis.text = element_text(size = 12),
+    axis.title = element_text(size = 12), legend.text = element_text(size = 15),
+    legend.title = element_text(size = 15), strip.text = element_text(size = 12)
+  ) +
+  facet_grid(diff ~ Group_size, labeller = labeller(
+    Group_size = as_labeller(Nlabels),
+    diff = as_labeller(glabels)
+  ))
+dev.off()
+```
+
+Boxplot for 4 groups 2 components:
+
+```{r}
+png("SimulationGeneratedFiles/Recovery Rate G4R2.png", width = 2100, height = 3100, res = 300)
+ggplot(data = dataG4R2, aes(x = condition, y = Recovery)) +
+  geom_boxplot() +
+  xlab("Types of Loading Differences") +
+  ylab("Recovery Rate") +
+  ylim(.4, 1) +
+  theme(
+    panel.background = element_rect(fill = "grey96"), axis.text = element_text(size = 12),
+    axis.title = element_text(size = 15), legend.text = element_text(size = 15),
+    legend.title = element_text(size = 15), strip.text = element_text(size = 12)
+  ) +
+  facet_grid(Group_size ~ diff, labeller = labeller(
+    Group_size = as_labeller(Nlabels),
+    diff = as_labeller(glabels)
+  ))
+dev.off()
+```
+
+Boxplot for 4 groups 4 components:
+
+```{r}
+png("SimulationGeneratedFiles/Recovery Rate G4R4.png", width = 2100, height = 3100, res = 300)
+ggplot(data = dataG4R4, aes(x = condition, y = Recovery)) +
+  geom_boxplot() +
+  xlab("Types of Loading Differences") +
+  ylab("Recovery Rate") +
+  ylim(.6, 1) +
+  theme(
+    panel.background = element_rect(fill = "grey96"), axis.text = element_text(size = 12),
+    axis.title = element_text(size = 15), legend.text = element_text(size = 15),
+    legend.title = element_text(size = 15), strip.text = element_text(size = 12)
+  ) +
+  facet_grid(Group_size ~ diff, labeller = labeller(
+    Group_size = as_labeller(Nlabels),
+    diff = as_labeller(glabels)
+  ))
+dev.off()
+```
+
+## Tucker's Congruence
+
+Boxplot for 2 groups 2 components:
+
+```{r}
+pdf("SimulationGeneratedFiles/Tucker congruence G2R2.png", width = 6, height = 5)
+ggplot(data = dataG2R2[dataG2R2$size == 50, ], aes(x = condition, y = V14)) +
+  geom_boxplot() +
+  xlab("Types of Loading Differences") +
+  ylab("Tucker Congruence") +
+  ylim(.6, 1) +
+  theme(
+    panel.background = element_rect(fill = "grey96"), axis.text = element_text(size = 12),
+    axis.title = element_text(size = 15), legend.text = element_text(size = 15),
+    legend.title = element_text(size = 15), strip.text = element_text(size = 12)
+  )
+dev.off()
+```
+
+Boxplot for 2 groups 4 components:
+
+```{r}
+png("SimulationGeneratedFiles/Tucker congruence G2R4.png", width = 2100, height = 3100, res = 300)
+ggplot(data = dataG2R4, aes(x = condition, y = Tucker)) +
+  geom_boxplot() +
+  xlab("Types of Loading Differences") +
+  ylab("Tucker's Congruence") +
+  ylim(.6, 1) +
+  theme(
+    panel.background = element_rect(fill = "grey96"), axis.text = element_text(size = 12),
+    axis.title = element_text(size = 12), legend.text = element_text(size = 15),
+    legend.title = element_text(size = 15), strip.text = element_text(size = 12)
+  ) +
+  facet_grid(Group_size ~ diff, labeller = labeller(
+    Group_size = as_labeller(Nlabels),
+    diff = as_labeller(glabels)
+  ))
+dev.off()
+```
+
+Boxplot for 4 groups 2 components:
+
+```{r}
+png("SimulationGeneratedFiles/Tucker congruence G4R2.png", width = 2100, height = 3100, res = 300)
+ggplot(data = dataG4R2, aes(x = condition, y = Tucker)) +
+  geom_boxplot() +
+  xlab("Types of Loading Differences") +
+  ylab("Tucker's Congruence") +
+  ylim(.4, 1) +
+  theme(
+    panel.background = element_rect(fill = "grey96"), axis.text = element_text(size = 12),
+    axis.title = element_text(size = 15), legend.text = element_text(size = 15),
+    legend.title = element_text(size = 15), strip.text = element_text(size = 12)
+  ) +
+  facet_grid(Group_size ~ diff, labeller = labeller(
+    Group_size = as_labeller(Nlabels),
+    diff = as_labeller(glabels)
+  ))
+dev.off()
+```
+
+Boxplot for 4 groups 4 components:
+
+```{r}
+png("SimulationGeneratedFiles/Tucker congruence G4R4.png", width = 2100, height = 3100, res = 300)
+ggplot(data = dataG4R4, aes(x = condition, y = Tucker)) +
+  geom_boxplot() +
+  xlab("Types of Loading Differences") +
+  ylab("Tucker's Congruence") +
+  ylim(.6, 1) +
+  theme(
+    panel.background = element_rect(fill = "grey96"), axis.text = element_text(size = 12),
+    axis.title = element_text(size = 15), legend.text = element_text(size = 15),
+    legend.title = element_text(size = 15), strip.text = element_text(size = 12)
+  ) +
+  facet_grid(Group_size ~ diff, labeller = labeller(
+    Group_size = as_labeller(Nlabels),
+    diff = as_labeller(glabels)
+  ))
+dev.off()
+```

@@ -1,0 +1,593 @@
+---
+title: "Qol Cancer Survivors"
+format: html
+editor: visual
+---
+
+# Data Preparation
+
+## Imports
+
+```{r}
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+rm(list = ls())
+```
+
+```{r}
+library("haven") # data are in spss format
+library("psych") # used to determine number of factors with parallel analysis
+library("MASS") # our functions use mvrnorm in the random initialization
+```
+
+## Loading the data
+
+Specify whether you use real data or artificial data:
+
+```{r}
+data_artificial <- TRUE
+```
+
+```{r}
+Ivec <- c() # vector to store group sizes
+
+if (data_artificial == FALSE) {
+  # load dataset and select relevant variables
+
+  PROFIEL <- read_sav("../../NA_QoL/Profiel_selectie2.sav")
+  Data1 <- dplyr::select(
+    PROFIEL, tumor, Age_questionnaire, gesl, aantal_comorb, tijd_dx, chemotherapie, radiotherapie, FA, CF, SL, EF, PA,
+    DY, AP, CO, NV
+  )
+
+  # change variable names
+  colnames(Data1) <- c(
+    "tumor", "age", "sex",
+    "comorb", "dx", "chemo",
+    "radio", "FA", "CF",
+    "SL", "EF", "PA", "DY",
+    "AP", "CO", "NV"
+  )
+
+  Datatot <- dplyr::select(
+    Data1, FA, CF, SL, EF, PA,
+    DY, AP, CO, NV
+  )
+
+  # Datasets per tumor.
+
+  Colorectal <- subset(Data1, tumor == 1)
+  Colorectaldata <- dplyr::select(Colorectal, FA, CF, SL, EF, PA, DY, AP, CO, NV)
+
+  Ovarian <- subset(Data1, tumor == 5)
+  Ovariandata <- dplyr::select(Ovarian, FA, CF, SL, EF, PA, DY, AP, CO, NV)
+
+  Thyroid <- subset(Data1, tumor == 6)
+  Thyroiddata <- dplyr::select(Thyroid, FA, CF, SL, EF, PA, DY, AP, CO, NV)
+
+  Endometrial <- subset(Data1, tumor == 7)
+  Endometrialdata <- dplyr::select(Endometrial, FA, CF, SL, EF, PA, DY, AP, CO, NV)
+
+  NHL <- subset(Data1, tumor == 8)
+  NHLdata <- dplyr::select(NHL, FA, CF, SL, EF, PA, DY, AP, CO, NV)
+
+  HL <- subset(Data1, tumor == 9)
+  HLdata <- dplyr::select(HL, FA, CF, SL, EF, PA, DY, AP, CO, NV)
+
+  CLL <- subset(Data1, tumor == 10)
+  CLLdata <- dplyr::select(CLL, FA, CF, SL, EF, PA, DY, AP, CO, NV)
+
+  Breast <- subset(Data1, tumor == 13)
+  Breastdata <- dplyr::select(Breast, FA, CF, SL, EF, PA, DY, AP, CO, NV)
+
+  # Centering + scaling of the variables per tumor group
+
+  Colorectaldata1 <- Colorectaldata[complete.cases(Colorectaldata), ]
+  Colorectal <- scale(Colorectaldata1, center = TRUE, scale = TRUE)
+  Ivec <- c(Ivec, dim(Colorectaldata1)[1])
+
+  Ovariandata1 <- Ovariandata[complete.cases(Ovariandata), ]
+  Ovarian <- scale(Ovariandata1, center = TRUE, scale = TRUE)
+  Ivec <- c(Ivec, dim(Ovariandata1)[1])
+
+  Thyroiddata1 <- Thyroiddata[complete.cases(Thyroiddata), ]
+  Thyroid <- scale(Thyroiddata1, center = TRUE, scale = TRUE)
+  Ivec <- c(Ivec, dim(Thyroiddata1)[1])
+
+  Endometrialdata1 <- Endometrialdata[complete.cases(Endometrialdata), ]
+  Endometrial <- scale(Endometrialdata1, center = TRUE, scale = TRUE)
+  Ivec <- c(Ivec, dim(Endometrialdata1)[1])
+
+  NHLdata1 <- NHLdata[complete.cases(NHLdata), ]
+  NHL <- scale(NHLdata1, center = TRUE, scale = TRUE)
+  Ivec <- c(Ivec, dim(Colorectaldata1)[1])
+
+  HLdata1 <- HLdata[complete.cases(HLdata), ]
+  HL <- scale(HLdata1, center = TRUE, scale = TRUE)
+  Ivec <- c(Ivec, dim(HLdata1)[1])
+
+  CLLdata1 <- CLLdata[complete.cases(CLLdata), ]
+  CLL <- scale(CLLdata1, center = TRUE, scale = TRUE)
+  Ivec <- c(Ivec, dim(CLLdata1)[1])
+
+  Breastdata1 <- Breastdata[complete.cases(Breastdata), ]
+  Breast <- scale(Breastdata1, center = TRUE, scale = TRUE)
+  Ivec <- c(Ivec, dim(Breastdata1)[1])
+} else {
+  # Load the artificial data
+  Breastdata1 <- read.table("../data/ArtificialCancerData/Breastdata1.dat")
+  CLLdata1 <- read.table("../data/ArtificialCancerData/CLLdata1.dat")
+  Colorectaldata1 <- read.table("../data/ArtificialCancerData/Colorectaldata1.dat")
+  Endometrialdata1 <- read.table("../data/ArtificialCancerData/Endometrialdata1.dat")
+  HLdata1 <- read.table("../data/ArtificialCancerData/HLdata1.dat")
+  NHLdata1 <- read.table("../data/ArtificialCancerData/NHLdata1.dat")
+  Ovariandata1 <- read.table("../data/ArtificialCancerData/Ovariandata1.dat")
+  Thyroiddata1 <- read.table("../data/ArtificialCancerData/Thyroiddata1.dat")
+
+  # Centering + scaling of the variables per tumor group
+
+  Colorectal <- scale(Colorectaldata1, center = TRUE, scale = TRUE)
+  Ivec <- c(Ivec, dim(Colorectaldata1)[1])
+
+  Ovarian <- scale(Ovariandata1, center = TRUE, scale = TRUE)
+  Ivec <- c(Ivec, dim(Ovariandata1)[1])
+
+  Thyroid <- scale(Thyroiddata1, center = TRUE, scale = TRUE)
+  Ivec <- c(Ivec, dim(Thyroiddata1)[1])
+
+  Endometrial <- scale(Endometrialdata1, center = TRUE, scale = TRUE)
+  Ivec <- c(Ivec, dim(Endometrialdata1)[1])
+
+  NHL <- scale(NHLdata1, center = TRUE, scale = TRUE)
+  Ivec <- c(Ivec, dim(Colorectaldata1)[1])
+
+  HL <- scale(HLdata1, center = TRUE, scale = TRUE)
+  Ivec <- c(Ivec, dim(HLdata1)[1])
+
+  CLL <- scale(CLLdata1, center = TRUE, scale = TRUE)
+  Ivec <- c(Ivec, dim(CLLdata1)[1])
+
+  Breast <- scale(Breastdata1, center = TRUE, scale = TRUE)
+  Ivec <- c(Ivec, dim(Breastdata1)[1])
+}
+```
+
+Concatenate data of the different tumor groups:
+
+```{r}
+DATA <- rbind(Breast, CLL, Colorectal, Endometrial, HL, NHL, Ovarian, Thyroid)
+CANCERDATA <- list(Breast, CLL, Colorectal, Endometrial, HL, NHL, Ovarian, Thyroid) # LIST representation
+G <- 8 # 8 groups
+```
+
+# Number of factors
+
+Crude view: PVE for concatenated data (suggests 1 dimension).
+
+```{r}
+par(mfrow = c(1, 1), mar = c(3, 3, 1, 1))
+barplot(svd(DATA)$d^2 / sum(svd(DATA)$d^2), names.arg = c(1:9))
+```
+
+Parallel analysis to determine number of factors:
+
+```{r}
+par(mfrow = c(1, 1), mar = c(1, 1, 1, 1))
+fa.parallel(Breast, fa = "fa", error.bars = T, se.bars = T, fm = "ml", show.legend = F) # 1 factor
+fa.parallel(CLL, error.bars = T, fa = "fa", se.bars = T, fm = "ml") # 2 factors
+fa.parallel(Colorectal, error.bars = T, fa = "fa", se.bars = T, fm = "ml") # 2 factors
+fa.parallel(Endometrial, error.bars = T, fa = "fa", se.bars = T, fm = "ml") # 2 factors
+fa.parallel(HL, error.bars = T, fa = "fa", se.bars = T, fm = "ml") # 3 factors
+fa.parallel(NHL, error.bars = T, fa = "fa", se.bars = T, fm = "ml") # 2 factors
+fa.parallel(Ovarian, error.bars = T, fa = "fa", se.bars = T, fm = "ml") # 2 factors
+fa.parallel(Thyroid, error.bars = T, fa = "fa", se.bars = T, fm = "ml") # 3 factors
+```
+
+1 to 3 factors suggested, majority is 2 =\> we will extract 2.
+
+Parallel factor analysis on concatenated data:
+
+```{r}
+fa.parallel(DATA, error.bars = T, fa = "fa", se.bars = T, fm = "ml") # 4 factors
+```
+
+Larger number of factors (4 instead of 2) suggests heterogeneity over groups.
+
+# Regularized MultiGroup Approximate EFA
+
+## Imports
+
+```{r}
+source("../R/initial-loadings.R")
+source("../R/multistart.R")
+source("../R/pstr.R")
+source("../R/joint-spca-finalizing.R")
+source("../R/is-jspca.R")
+source("../R/seqstrategy.R")
+source("../R/performance-measures.R")
+```
+
+```{r}
+R <- 2
+DATA <- CANCERDATA
+```
+
+## Set seed
+
+```{r}
+set.seed(1609)
+```
+
+## Step 1: MODEL SELECTION, determine K and lambda
+
+```{r}
+modelsel <- seqstrategy(DATA, R = 2, SP = 0.9, ALPH = 0.1, THR = 0.05) # sequential strategy
+```
+
+Inspect results:
+
+```{r}
+modelsel$details
+modelsel$cardinality # selected K
+modelsel$lambda # selected lambda
+modelsel$lambda <- 0.005 # other solution introduces close to zero loadings in multistart
+```
+
+## Step 2: OBTAIN ESTIMATES FOR SELECTED MODEL using multistart
+
+```{r}
+selmodel <- MULTISTART(DATA, R, CARD = modelsel$cardinality, LAMBDA = modelsel$lambda, SP = seq(0.1, 0.9, by = 0.1), ALPH = seq(0.1, 0.9, by = 0.1), MAXITER = 20, EPS = 1e-4)
+L <- selmodel$loadings
+round(cbind(L[[1]], L[[2]], L[[3]], L[[4]], L[[5]], L[[6]], L[[7]], L[[8]]), 2)
+```
+
+```{r}
+concL1 <- c()
+concL2 <- c()
+for (g in 1:G) {
+  concL1 <- cbind(concL1, L[[g]][, 1])
+  concL2 <- cbind(concL2, L[[g]][, 2])
+}
+```
+
+Variability loadings over groups -\> constipation, diarrhea, cogn.funct. and appetite loss:
+
+```{r}
+sqrt(diag(var(t(concL1)))) + sqrt(diag(var(t(concL2))))
+```
+
+## Save results
+
+Write model selection results to csv file:
+
+```{r}
+write.table(modelsel$details, file = "QoLCancerSurvivorsGeneratedFiles/QOL_modelselection.txt", dec = ",", sep = "\t")
+```
+
+Write loadings to csv:
+
+```{r}
+write.table(L, file = "QoLCancerSurvivorsGeneratedFiles/QOL_loadings_RegMGEFA.txt", dec = ",", sep = "\t")
+```
+
+# Comparison with consensus
+
+## Set seed
+
+```{r}
+set.seed(510)
+```
+
+## Obtaining consensus configuration for reference (lambda = 1)
+
+```{r}
+consensus <- MULTISTART(DATA, R, CARD = modelsel$cardinality, LAMBDA = 1, SP = seq(0.1, 0.9, by = 0.1), ALPH = seq(0.1, 0.9, by = 0.1), MAXITER = 20, EPS = 1e-4)
+```
+
+To compare with the selected model solution, account for reflection and permutation:
+
+```{r}
+perm <- gtools::permutations(R, R)
+```
+
+Only first group needed to determine permutation/reflection.
+
+```{r}
+loadingsref <- selmodel$loadings[[1]]
+absdiff <- c()
+for (p in 1:nrow(perm)) {
+  corsign <-
+    sign(diag(cor(loadingsref, consensus$loadings[[1]][, perm[p, ]])))
+  L1 <- (consensus$loadings[[1]][, perm[p, ]]) %*% diag(corsign)
+  diff <- sum(rowSums(abs(loadingsref - L1)))
+  absdiff[p] <- abs(diff)
+}
+bestperm <- which.min(absdiff)
+corsign <-
+  sign(diag(cor(loadingsref, consensus$loadings[[1]][, perm[bestperm, ]])))
+for (g in 1:G) {
+  consensus$loadings[[g]] <- (consensus$loadings[[g]][, perm[bestperm, ]]) %*% diag(corsign)
+}
+L <- consensus$loadings
+round(cbind(L[[1]], L[[2]], L[[3]], L[[4]], L[[5]], L[[6]], L[[7]], L[[8]]), 2)
+```
+
+## Regularization path
+
+### Set Seed
+
+```{r}
+set.seed(1510)
+```
+
+### Regularization
+
+```{r}
+lambdavec <- c(1e-4, 0.005, 0.0075, 0.02, 0.033, 0.2, 1) # highest value = diff of this size is fused
+selcardinality <- modelsel$cardinality
+FA1var <- c()
+FA2var <- c()
+Lmat <- c() # matrix of loadings for all groups and lambda values
+perm <- gtools::permutations(R, R)
+for (j in 1:length(lambdavec)) {
+  selmodelnew <- MULTISTART(DATA, R, CARD = selcardinality, LAMBDA = lambdavec[j], SP = seq(0.6, 0.9, by = 0.1), ALPH = seq(0.6, 0.9, by = 0.1), MAXITER = 20, EPS = 1e-4)
+  if (j == 1) {
+    selmodelref <- selmodel
+  } else {
+    # only first group needed to determine permutation/reflection
+    loadings <- selmodelnew$loadings[[1]]
+    loadingsref <- selmodelref$loadings[[1]]
+    absdiff <- c()
+    for (p in 1:nrow(perm)) {
+      corsign <-
+        sign(diag(cor(loadingsref, loadings[, perm[p, ]])))
+      L1 <- (loadings[, perm[p, ]]) %*% diag(corsign)
+      diff <- sum(rowSums(abs(loadingsref - L1)))
+      absdiff[p] <- abs(diff)
+    }
+    bestperm <- which.min(absdiff)
+    corsign <-
+      sign(diag(cor(loadingsref, loadings[, perm[bestperm, ]])))
+  }
+  FA1mat <- c()
+  FA2mat <- c()
+  FAmatj <- c()
+  for (g in 1:G) {
+    if (j != 1) {
+      selmodelnew$loadings[[g]] <- (selmodelnew$loadings[[g]][, perm[bestperm, ]]) %*% diag(corsign)
+    }
+    FA1mat <- cbind(FA1mat, selmodelnew$loadings[[g]][, 1])
+    FA2mat <- cbind(FA2mat, selmodelnew$loadings[[g]][, 2])
+    FAmatj <- cbind(FAmatj, selmodelnew$loadings[[g]])
+  }
+  Lmat <- rbind(Lmat, FAmatj)
+  FA1var <- cbind(FA1var, apply(FA1mat, 1, var))
+  FA2var <- cbind(FA2var, apply(FA2mat, 1, var))
+}
+Lmat[, 1:4]
+FA1var # too high values of lambda result in higher variance (because of zeros being merged?)
+FA2var
+```
+
+### Save results
+
+```{r}
+save(FAmatj, file = "QoLCancerSurvivorsGeneratedFiles/QoL_FAmatj.Rdata") # Loadings of the symptoms and functioning on the two factors for each of the tumor groups
+```
+
+## Plotting
+
+### Biplot consensus configuration
+
+```{r}
+varcolor <- c(1:9)
+png(
+  file = "QoLCancerSurvivorsGeneratedFiles/Consensus_QoL.png",
+  width = 800, height = 800
+)
+plot.new()
+par(mfrow = c(1, 1), mar = c(4, 4, 4, 1), pty = "s", cex = 2.5)
+plot.window(xlim = c(-1, 1), ylim = c(-1, 1), asp = 1)
+axis(side = 1, at = c(-1, -0.5, 0, 0.5, 1), labels = TRUE)
+axis(side = 2, at = c(-1, -0.5, 0, 0.5, 1), labels = TRUE)
+title(main = "Consensus configuration")
+abline(v = 0, h = 0, lty = 2, col = "grey25")
+arrows(
+  x0 = 0, x1 = consensus$loadings[[g]][, 1],
+  y0 = 0, y1 = consensus$loadings[[g]][, 2],
+  col = varcolor, length = 0.08, lwd = 3, angle = 30
+)
+ucircle <- cbind(cos((0:360) / 180 * pi), sin((0:360) / 180 * pi))
+polygon(ucircle, lty = "solid", border = "gray10", lwd = 1)
+f <- 1.1
+adjustx <- c(0, 0.0, 0.0, 0, 0.07, 0, 0, 0.0, 0) # adjustment for SL/EF/PA/AP
+adjusty <- c(0, -0.05, 0.05, 0.05, 0, 0, 0, -0.05, 0) # adjustment for SL/EF/PA/AP
+text(f * consensus$loadings[[1]][, 1] + adjustx,
+  f * consensus$loadings[[1]][, 2] + adjusty,
+  row.names(selmodel$loadings[[1]]),
+  col = varcolor, cex = 0.7
+)
+dev.off()
+```
+
+### Biplots for solution obtained after model selection
+
+Order in similarity to consensus:
+
+```{r}
+tumor <- c("Breast", "ChronicL", "Colon", "Endometrial", "HodgkinL", "NonHodgkinL", "Ovarian", "Thyroid")
+distance <- c(rep(0, G))
+for (g in 1:G) {
+  distance[g] <- sum(rowSums(abs(selmodel$loadings[[g]] - consensus$loadings[[1]])))
+}
+plotorder <- sort(distance, index.return = T)$ix
+```
+
+```{r}
+varcolor <- c(1:9)
+png(
+  file = "QoLCancerSurvivorsGeneratedFiles/BiplotPerTumor_QoLTEST.png",
+  width = 1600, height = 800
+)
+par(mfrow = c(2, 4), mar = c(4, 4, 4, 1), mai = c(1, 1, 1, 1), pty = "s", cex = 2)
+for (g in plotorder) {
+  plot.new()
+  plot.window(xlim = c(-1, 1), ylim = c(-1, 1), asp = 1)
+  axis(side = 1, at = c(-1, -0.5, 0, 0.5, 1), labels = TRUE)
+  axis(side = 2, at = c(-1, -0.5, 0, 0.5, 1), labels = TRUE)
+  title(main = paste("", tumor[g], ""))
+  abline(v = 0, h = 0, lty = 2, col = "grey25")
+  arrows(
+    x0 = 0, x1 = selmodel$loadings[[g]][, 1],
+    y0 = 0, y1 = selmodel$loadings[[g]][, 2],
+    col = varcolor, length = 0.08, lwd = 2, angle = 30
+  )
+  ucircle <- cbind(cos((0:360) / 180 * pi), sin((0:360) / 180 * pi))
+  polygon(ucircle, lty = "solid", border = "gray10", lwd = 1)
+  f <- 1.1
+  # adjustx <- c(0.05,rep(0,8))#adjustment for SL/EF/PA/AP
+  # adjusty <- c(-0.02,0,0.05,0.15,0.1,0,0,0,0)#adjustment for SL/EF/PA/AP
+  text(f * selmodel$loadings[[g]][, 1] + adjustx,
+    f * selmodel$loadings[[g]][, 2] + adjusty,
+    row.names(selmodel$loadings[[1]]),
+    col = varcolor, cex = 0.7
+  )
+}
+dev.off()
+```
+
+### Plot of the evolution of the loadings for different penalty values
+
+```{r}
+png(
+  file = "QoLCancerSurvivorsGeneratedFiles/RegularizationPahth_QoL.png",
+  width = 1600, height = 800
+)
+par(mfrow = c(1, 4), mar = c(1, 2, 2, 1), pty = "s", cex = 1.4)
+lambdasel <- c(1, 3, 4, 5)
+Gmean <- matrix(nrow = 9, ncol = 2)
+for (l in lambdasel) {
+  plot.new()
+  plot.window(xlim = c(-1, 1), ylim = c(-1, 1), asp = 1)
+  axis(side = 1, at = c(-1, -0.5, 0, 0.5, 1), labels = TRUE)
+  axis(side = 2, at = c(-1, -0.5, 0, 0.5, 1), labels = TRUE)
+  axis(side = 1, at = c(-0.5, 0, 0.5, 1), labels = TRUE)
+  axis(side = 2, at = c(-0.5, 0, 0.5, 1), labels = TRUE)
+  title(main = bquote(paste(lambda, "= ", .(lambdavec[l]))))
+  abline(v = 0, h = 0, lty = 2, col = "grey25")
+  ucircle <- cbind(cos((0:360) / 180 * pi), sin((0:360) / 180 * pi))
+  polygon(ucircle, lty = "solid", border = "gray10", lwd = 1)
+
+  Gmean[, 1] <- rowMeans(Lmat[var[l]:(var[l + 1] - 1), seq(1, 16, by = 2)])
+  Gmean[, 2] <- rowMeans(Lmat[var[l]:(var[l + 1] - 1), seq(2, 16, by = 2)])
+  for (g in 1:8) {
+    L <- 2 * (g - 1) + 1
+    U <- 2 * g
+    for (j in 1:9) {
+      points(Lmat[var[l] + j - 1, L:U], type = "n")
+      title(bquote(paste(lambda, "= ", .(lambdavec[l]))))
+      text(Lmat[var[l] + j - 1, L], Lmat[var[l] + j - 1, U], tugroup[g], cex = 0.5, col = j)
+      segments(Gmean[j, 1], Gmean[j, 2], Lmat[var[l] + j - 1, L], Lmat[var[l] + j - 1, U], col = j, lty = 3)
+    }
+  }
+  for (j in 1:9) {
+    text(Gmean[j, 1], Gmean[j, 2], row.names(Lmat[1:9, ])[j], srt = text_rot[j], adj = text_adj[j], col = j, font = 2)
+  }
+}
+dev.off()
+```
+
+### Selected solution
+
+Arrows in the last plot:
+
+```{r}
+for (j in 1:9) {
+  segments(0, 0, PCmat[startLast + j - 1, 2], PCmat[startLast + j - 1, 1], col = j, lty = 1, lwd = 1)
+}
+```
+
+Use layout for multiple plots (<https://stackoverflow.com/questions/66698499/create-subplots-in-a-subplot-in-r>).
+
+```{r}
+m2 <- matrix(c(
+  1, 2, 3, 4
+), nrow = 1)
+layout(m2, widths = c(1, 1, 1, 1))
+lambdasel <- c(1, 4, 5, 7) 
+var <- seq(1, length(lambdavec) * 9, by = 9)
+startLast <- var[length(lambdavec)]
+endLast <- dim(Lmat)[1]
+round(Lmat[startLast:endLast, ], 3) # print consensus loadings
+```
+
+```{r}
+tugroup <- c("Br", "CL", "Co", "En", "HL", "NHL", "Ov", "Th")
+text_rot <- c(0, 90, 90, 90, 90, 0, 0, 0, 0)
+text_adj <- c(0.5, 0, 1, 0, 1, 0.5, 0.5, 0.5, 0.5)
+```
+
+Plot of selected solution:
+
+```{r}
+png(
+  file = "QoLCancerSurvivorsGeneratedFiles/SelectedSolution.png",
+  width = 800, height = 800
+)
+par(pty = "s", mar = c(4, 4, 1, 1), cex = 2, cex.sub = 1.5)
+options(repr.plot.width = 6, repr.plot.height = 6)
+l <- 3
+plot(PCmat[startLast:endLast, 2:1],
+  xlim = c(-0.5, 1), ylim = c(-0.5, 1),
+  type = "n", xlab = "Factor 1", ylab = "Factor 2", xaxt = "n", yaxt = "n", pty = "s"
+) # last = merged solution
+grid(
+  nx = NULL, ny = NULL,
+  lty = 2, # Grid line type
+  col = "gray", # Grid line color
+  lwd = 2
+) # Grid line width
+axis(
+  side = 1,
+  at = seq(-0.5, 1, length = 4),
+  labels = c("-0.5", "0", "0.5", "1")
+)
+axis(
+  side = 2,
+  at = seq(-0.5, 1, length = 4),
+  labels = c("-0.5", "0", "0.5", "1")
+)
+for (g in 1:8) {
+  U <- 2 * (g - 1) + 1
+  L <- 2 * g
+  for (j in 1:9) {
+    points(PCmat[var[l] + j - 1, L:U], type = "n")
+    d <- sum((PCmat[startLast + j - 1, 2:1] - PCmat[var[l] + j - 1, L:U])^2)
+    if (d > 0.05) {
+      text(PCmat[var[l] + j - 1, L], PCmat[var[l] + j - 1, U], tugroup[g], cex = 0.5, col = j)
+      segments(PCmat[startLast + j - 1, 2], PCmat[startLast + j - 1, 1], PCmat[var[l] + j - 1, L], PCmat[var[l] + j - 1, U], col = j, lty = 3)
+    }
+  }
+}
+for (j in 1:9) {
+  text(PCmat[startLast + j - 1, 2], PCmat[startLast + j - 1, 1], row.names(PCmat[1:9, ])[j], srt = text_rot[j], adj = text_adj[j], col = j, font = 2)
+}
+
+dev.off()
+```
+
+### Second LV
+
+```{r}
+for (g in 1:8) {
+  L <- 2 * (g - 1) + 1
+  U <- 2 * g
+  points(PCmat[1:9, L:U], col = g)
+}
+
+par(mfrow = c(1, 1), mar = c(3, 2, 1, 1))
+matplot(t(log(1 + PC1var)), type = "l", lty = 1:9, col = 1:9, xlab = "lambda", xaxt = "n")
+matplot(t(log(1 + PC2var)), type = "l", lty = 1:9, col = 1:9, xlab = "lambda", xaxt = "n")
+axis(1, at = 1:7, labels = c("0", "0.01", "0.05", "0.1", "0.2", "0.5", "0.2"))
+legend(6, 0.25, legend = row.names(PC1var), cex = 0.5, lty = 1:9, col = 1:9)
+title(main = "Second LV")
+```
