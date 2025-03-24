@@ -253,7 +253,7 @@ for (g in 1:G) {
 }
 ```
 
-To obain insigh in the variability of the loadings over groups, the standard deviations (over groups) for the two factors are added. The variables that show most variability are constipation, diarrhea, cogn.funct. and appetite loss:
+To obain insight in the variability of the loadings over groups, the standard deviations (over groups) for the two factors are added. The variables that show most variability are constipation, diarrhea, cogn.funct. and appetite loss:
 
 ```{r}
 sqrt(diag(var(t(concL1)))) + sqrt(diag(var(t(concL2))))
@@ -287,13 +287,13 @@ set.seed(510)
 consensus <- MULTISTART(DATA, R, CARD = modelsel$cardinality, LAMBDA = 1, SP = seq(0.1, 0.9, by = 0.1), ALPH = seq(0.1, 0.9, by = 0.1), MAXITER = 20, EPS = 1e-4)
 ```
 
-To compare with the selected model solution, account for reflection and permutation:
+To compare with the model selected via the sequential strategy, account for reflection and permutation:
 
 ```{r}
 perm <- gtools::permutations(R, R)
 ```
 
-Only first group needed to determine permutation/reflection.
+Only the loadings from the first group are needed to determine permutation/reflection.
 
 ```{r}
 loadingsref <- selmodel$loadings[[1]]
@@ -379,6 +379,8 @@ save(FAmatj, file = "QoLCancerSurvivorsGeneratedFiles/QoL_FAmatj.Rdata") # Loadi
 ```
 
 ## Plotting
+
+Please note that running the code here below line-by-line or in chunks may result in an error (''plot.new has not been called yet").
 
 ### Biplot consensus configuration
 
@@ -468,6 +470,10 @@ png(
 )
 par(mfrow = c(1, 4), mar = c(1, 2, 2, 1), pty = "s", cex = 1.4)
 lambdasel <- c(1, 3, 4, 5)
+var <- seq(1,length(lambdasel)*9,by=9)
+tugroup <- c("Br","CL","Co","En","HL","NHL","Ov","Th")
+text_rot <- c(0,90,90,90,90,0,0,0,0)
+text_adj <- c(0.5,0,1,0,1,0.5,0.5,0.5,0.5)
 Gmean <- matrix(nrow = 9, ncol = 2)
 for (l in lambdasel) {
   plot.new()
@@ -500,98 +506,4 @@ for (l in lambdasel) {
 dev.off()
 ```
 
-### Selected solution
-
-Arrows in the last plot:
-
-```{r}
-for (j in 1:9) {
-  segments(0, 0, PCmat[startLast + j - 1, 2], PCmat[startLast + j - 1, 1], col = j, lty = 1, lwd = 1)
-}
-```
-
-Use layout for multiple plots (<https://stackoverflow.com/questions/66698499/create-subplots-in-a-subplot-in-r>).
-
-```{r}
-m2 <- matrix(c(
-  1, 2, 3, 4
-), nrow = 1)
-layout(m2, widths = c(1, 1, 1, 1))
-lambdasel <- c(1, 4, 5, 7) 
-var <- seq(1, length(lambdavec) * 9, by = 9)
-startLast <- var[length(lambdavec)]
-endLast <- dim(Lmat)[1]
-round(Lmat[startLast:endLast, ], 3) # print consensus loadings
-```
-
-```{r}
-tugroup <- c("Br", "CL", "Co", "En", "HL", "NHL", "Ov", "Th")
-text_rot <- c(0, 90, 90, 90, 90, 0, 0, 0, 0)
-text_adj <- c(0.5, 0, 1, 0, 1, 0.5, 0.5, 0.5, 0.5)
-```
-
-Plot of selected solution:
-
-```{r}
-png(
-  file = "QoLCancerSurvivorsGeneratedFiles/SelectedSolution.png",
-  width = 800, height = 800
-)
-par(pty = "s", mar = c(4, 4, 1, 1), cex = 2, cex.sub = 1.5)
-options(repr.plot.width = 6, repr.plot.height = 6)
-l <- 3
-plot(PCmat[startLast:endLast, 2:1],
-  xlim = c(-0.5, 1), ylim = c(-0.5, 1),
-  type = "n", xlab = "Factor 1", ylab = "Factor 2", xaxt = "n", yaxt = "n", pty = "s"
-) # last = merged solution
-grid(
-  nx = NULL, ny = NULL,
-  lty = 2, # Grid line type
-  col = "gray", # Grid line color
-  lwd = 2
-) # Grid line width
-axis(
-  side = 1,
-  at = seq(-0.5, 1, length = 4),
-  labels = c("-0.5", "0", "0.5", "1")
-)
-axis(
-  side = 2,
-  at = seq(-0.5, 1, length = 4),
-  labels = c("-0.5", "0", "0.5", "1")
-)
-for (g in 1:8) {
-  U <- 2 * (g - 1) + 1
-  L <- 2 * g
-  for (j in 1:9) {
-    points(PCmat[var[l] + j - 1, L:U], type = "n")
-    d <- sum((PCmat[startLast + j - 1, 2:1] - PCmat[var[l] + j - 1, L:U])^2)
-    if (d > 0.05) {
-      text(PCmat[var[l] + j - 1, L], PCmat[var[l] + j - 1, U], tugroup[g], cex = 0.5, col = j)
-      segments(PCmat[startLast + j - 1, 2], PCmat[startLast + j - 1, 1], PCmat[var[l] + j - 1, L], PCmat[var[l] + j - 1, U], col = j, lty = 3)
-    }
-  }
-}
-for (j in 1:9) {
-  text(PCmat[startLast + j - 1, 2], PCmat[startLast + j - 1, 1], row.names(PCmat[1:9, ])[j], srt = text_rot[j], adj = text_adj[j], col = j, font = 2)
-}
-
-dev.off()
-```
-
-### Second LV
-
-```{r}
-for (g in 1:8) {
-  L <- 2 * (g - 1) + 1
-  U <- 2 * g
-  points(PCmat[1:9, L:U], col = g)
-}
-
-par(mfrow = c(1, 1), mar = c(3, 2, 1, 1))
-matplot(t(log(1 + PC1var)), type = "l", lty = 1:9, col = 1:9, xlab = "lambda", xaxt = "n")
-matplot(t(log(1 + PC2var)), type = "l", lty = 1:9, col = 1:9, xlab = "lambda", xaxt = "n")
-axis(1, at = 1:7, labels = c("0", "0.01", "0.05", "0.1", "0.2", "0.5", "0.2"))
-legend(6, 0.25, legend = row.names(PC1var), cex = 0.5, lty = 1:9, col = 1:9)
-title(main = "Second LV")
-```
+### 
