@@ -90,7 +90,7 @@ seqstrategy <- function(DATA, R, SP = 0.9, ALPH = 0.1, THR = 0.05, TOL = 2) {
   }
   AVEC <- rbind(AVEC, round(avec, 4))
   index <- 1:length(lambdavec)
-  index <- index[avec[, "MinNonZeroL"] >= THR]
+  #index <- index[avec[, "MinNonZeroL"] >= THR]
   index <- index[which.max(avec[index, 3])]
   sellambda <- avec[index, 1]
   selmodel <- jointSPCA(DATA, R = R, SP, ALPH, lambda = sellambda, CARD = selcardinality, MaxIter = 20, eps)

@@ -231,7 +231,7 @@ Inspect results:
 modelsel$details
 modelsel$cardinality # selected K
 modelsel$lambda # selected lambda
-modelsel$lambda <- 0.005 # other solution introduces close to zero loadings in multistart
+modelsel$lambda <- 0.025 # other solution introduces close to zero loadings in multistart
 ```
 
 ## Step 2: OBTAIN ESTIMATES FOR SELECTED MODEL using multistart
@@ -242,6 +242,8 @@ L <- selmodel$loadings
 round(cbind(L[[1]], L[[2]], L[[3]], L[[4]], L[[5]], L[[6]], L[[7]], L[[8]]), 2)
 ```
 
+To compare the loadings over the groups, we concatenate them per factor.
+
 ```{r}
 concL1 <- c()
 concL2 <- c()
@@ -251,7 +253,7 @@ for (g in 1:G) {
 }
 ```
 
-Variability loadings over groups -\> constipation, diarrhea, cogn.funct. and appetite loss:
+To obain insigh in the variability of the loadings over groups, the standard deviations (over groups) for the two factors are added. The variables that show most variability are constipation, diarrhea, cogn.funct. and appetite loss:
 
 ```{r}
 sqrt(diag(var(t(concL1)))) + sqrt(diag(var(t(concL2))))
