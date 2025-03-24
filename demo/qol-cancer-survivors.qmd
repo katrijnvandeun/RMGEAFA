@@ -151,7 +151,7 @@ if (data_artificial == FALSE) {
 }
 ```
 
-Concatenate data of the different tumor groups:
+We also create concatenated data of the different tumor groups:
 
 ```{r}
 DATA <- rbind(Breast, CLL, Colorectal, Endometrial, HL, NHL, Ovarian, Thyroid)
@@ -161,14 +161,14 @@ G <- 8 # 8 groups
 
 # Number of factors
 
-Crude view: PVE for concatenated data (suggests 1 dimension).
+Regularized MGEAFA needs input of the number of factors. To determine this number, use parallel factor analysis. A first crude view on the size of variation explained by the underlying dimensions is obtained by plotted the Proportion of Variance Explained of the principal components in the concatenated data (suggests 1 dimension).
 
 ```{r}
 par(mfrow = c(1, 1), mar = c(3, 3, 1, 1))
 barplot(svd(DATA)$d^2 / sum(svd(DATA)$d^2), names.arg = c(1:9))
 ```
 
-Parallel analysis to determine number of factors:
+Parallel analysis has been shown to be a competitive method to determine number of factors, To use the method in the context of multigroup data, we firs perform a parallel analysis on the data of each group (and, here below, on the concatenated data):
 
 ```{r}
 par(mfrow = c(1, 1), mar = c(1, 1, 1, 1))
@@ -190,9 +190,9 @@ Parallel factor analysis on concatenated data:
 fa.parallel(DATA, error.bars = T, fa = "fa", se.bars = T, fm = "ml") # 4 factors
 ```
 
-Larger number of factors (4 instead of 2) suggests heterogeneity over groups.
+The larger number of factors (4 instead of 2) suggests heterogeneity over groups. We choose to base our choice of the number of factors on the majority found with the parallel analyses per group. Note that there are only 9 variables with this data so having four factors (as suggested for the concatenated data) seems too much.
 
-# Regularized MultiGroup Approximate EFA
+# Regularized MultiGroup Exploratory Approximate FA
 
 ## Imports
 
@@ -218,6 +218,8 @@ set.seed(1609)
 ```
 
 ## Step 1: MODEL SELECTION, determine K and lambda
+
+Here we use the automated procedure for model selection. This is based on a sequential strategy in which first the number of nonzero loadings (K) is determined. Note that this step takes some time (half a minute).
 
 ```{r}
 modelsel <- seqstrategy(DATA, R = 2, SP = 0.9, ALPH = 0.1, THR = 0.05) # sequential strategy
