@@ -9,7 +9,6 @@ editor: visual
 ## Imports
 
 ```{r}
-setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 rm(list = ls())
 ```
 
