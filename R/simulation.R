@@ -1,13 +1,23 @@
 ### Imports
 library(MASS)
 
-source("joint-spca-finalizing.R")
-source("is-jspca.R")
-source("seqstrategy.R")
-source("performance-measures.R")
-source("initial-loadings.R") # 2nd version: Rotation towards simple structure
-source("pstr.R")
-
+if (sys.nframe() == 0L) { # Check if the file is being sourced or run on its own for the impoert pahts to work correctly
+  source("./R/joint-spca-finalizing.R")
+  source("./R/seqstrategy.R")
+  source("./R/multistart.R")
+  source("./R/performance-measures.R")
+  source("./R/pstr.R") # 2nd version: Rotation towards simple structure
+  source("./R/initial-loadings.R")
+  source("./R/is-jspca.R")
+} else {
+  source("../R/joint-spca-finalizing.R")
+  source("../R/seqstrategy.R")
+  source("../R/multistart.R")
+  source("../R/performance-measures.R")
+  source("../R/pstr.R") # 2nd version: Rotation towards simple structure
+  source("../R/initial-loadings.R")
+  source("../R/is-jspca.R")
+}
 
 #' Valid Args
 #'

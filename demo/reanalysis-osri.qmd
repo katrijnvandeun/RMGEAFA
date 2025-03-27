@@ -13,7 +13,6 @@ De Roover, K., & Vermunt, J. K. (2019). On the exploratory road to unraveling fa
 ## Imports
 
 ```{r}
-setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 rm(list = ls())
 ```
 
