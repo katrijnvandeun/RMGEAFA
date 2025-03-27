@@ -19,11 +19,13 @@ library("psych")
 
 ## Loading the data
 
+The data are publicly available at <https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE127711>. The series matrix file should be downloaded.
+
 ```{r}
 CANVAS <- read.csv("../data/GSE127711_series_matrix.txt", header = FALSE, row.names = c(1), sep = "\t", na.strings = c("", "N/A"), skip = 95)
 ```
 
-Extract data at XX visit and extract diagnosis.
+The first 95 rows in the series matrix contain information about the study but also about the samples taken (diagnosis of the patient, patient id, which visit etc.). The diagnosis and patientid information is copied here below.
 
 ```{r}
 diagnosis <- c(
@@ -100,21 +102,21 @@ patientid <- c(
 
 ## Data cleaning
 
-Extract only data for every patient once.
+The analysis here focuses on comparing groups at a fixed point in time. Therefore, only one sample is included for every patient.
 
 ```{r}
 diagn <- as.factor(diagnosis[!duplicated(patientid)])
 summary(diagn)
 ```
 
-We will only use BP, MDD, SZ, and SZA as MOOD and PSYCH have very small n.
+We will only use BP, MDD, SZ, and SZA as MOOD and PSYCH have very small n. Furthermore, the control probeset is removed.
 
 ```{r}
 DATA <- CANVAS[!duplicated(patientid)]
 DATA <- DATA[-54676, ] # remove last row of missing values: control probeset
 ```
 
-Transpose + standardize data
+The original data are in transposed form and not standardized. Therefore we transpose the data and standardize each variable in each group to have mean zero and unit variance.
 
 ```{r}
 BP <- as.matrix(log2(DATA[, diagn == "BP"]))
