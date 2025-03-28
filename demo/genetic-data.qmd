@@ -141,9 +141,9 @@ SZ_singvals <- svd(SZ)$d
 DATA <- rbind(BP, MDD, SZA, SZ)
 ```
 
-## Exploration
+## Determining the number of factors
 
-Generate scree plots of singular values:
+To determine the number of factors, we rely on a scree plot of the variance explained by the principal components. Our choice for this approach is motivated by the large number of variables that makes many methods fail (e.g., parallel analysis). The first 25 components are inspected (using the singular value decomposition):
 
 ```{r}
 par(mfrow = c(2, 2), mar = c(2, 2, 2, 2))
@@ -153,26 +153,20 @@ plot(SZA_singvals[1:25])
 plot(SZ_singvals[1:25])
 ```
 
+In each of the plots the first two/three components stand out; this suggests that to model each of the data sets at least 3 factors are needed.
+```{r}
+R <- 3
+```
+
+The following code illustrates that parallel analysis cannot handle huge numbers of variables:
+
 ```{r}
 fa.parallel(DATA[, 1:5000], error.bars = T, se.bars = T, fm = "ml")
 ```
 
-No result obtained and this is not yet full set of variables.
+(No result obtained and this is not yet the full set of variables.)
 
-```{r}
-plot(svd(DATA)$d)
-```
-
-Retain 3 factors as seems to be needed for one group.
-
-```{r}
-J <- dim(BP)[2]
-DisorderDATA <- list(BP[, 1:J], MDD[, 1:J], SZA[, 1:J], SZ[, 1:J])
-R <- 3
-G <- 4
-```
-
-# Modelling with fusion
+# Regularized Multigroup EAFA
 
 ## Imports
 
@@ -198,7 +192,7 @@ set.seed(54321)
 
 ## Fitting the model
 
-Fit models with more and more fusion to investigate fusion paths.
+In this analysis we will focus on differences between the different groups: Are those genes that are most resistant to measurement noninvariance associated to meaningful biological processes? To answer this question we study the evolution of the pairwise differences between the loadings when relaxing the fusion penalty gradually. As a point of reference, first the consensus configuration is obtained. This allows to align the different solutions in terms of order of the factors and sign of the loadings.
 
 ```{r}
 CONSENSUS <- MULTISTART(DATA = DisorderDATA, R, CARD = J * R, LAMBDA = 0.2, SP = seq(0.1, 0.9, by = 0.1), ALPH = 0, MAXITER = 20, EPS = 1e-4)
@@ -210,7 +204,6 @@ MODELS <- c()
 FA1 <- c()
 FA2 <- c()
 FA3 <- c()
-# lambdavec <- c(1e-4,1e-3,0.005,0.0075,0.01,0.02,0.025,0.05,0.1) #highest value = diff of this size is fused
 lambdavec <- c(0.1, 0.05, 0.025, 0.01, 0.005, 1e-4)
 refloadings <- CONSENSUS$loadings
 FA1 <- cbind(FA1, refloadings[[1]][, 1], refloadings[[2]][, 1], refloadings[[3]][, 1], refloadings[[4]][, 1])
@@ -248,7 +241,7 @@ Part 1
 
 -   eliminate probesets that are not annotated ('NA') .
 
--   summarize genes appearing more than once in the list usign the median score.
+-   summarize genes appearing more than once in the list using the median score.
 
 ## Imports
 
@@ -294,20 +287,9 @@ gene_list <- symbolall[x$ix]
 
 ## Analysis
 
-Use tmod package; note focus on immune related processes.
+Use tmod package; this package focuses on immune related processes. Here below we will look for meaningful biological processes in genes showing (high) measurement noninvariance between disorders. Gene set enrichment analysis requires a ranking of the genes. Here, the ranking is based on a measure of dissimilarity of the loadings.
 
-```{r}
-res <- tmodCERNOtest(gene_list)
-res
-```
-
-Not much found ... focus on genes showing measurement noninvariance.
-
-```{r}
-cbind(CONSENSUS$loadings[[1]][, 1], FA2)
-```
-
-### Calculate Eucledean Distance between all pairs
+### Calculate Euclidean Distance between all pairs of disorders
 
 ```{r}
 idx <- seq(1, dim(FA1)[2], by = 4)
@@ -323,7 +305,7 @@ d_BP_MDD <- d_BP_MDD + mean(BPvsMDD)
 x <- sort(BPvsMDD, index.return = T, decreasing = T)
 gene_list <- symbolall[x$ix]
 
-# use tmod package; note focus on immune related processes
+# use tmod package; note focus is on immune related processes
 res_BP_MDD <- tmodCERNOtest(gene_list)
 res_BP_MDD
 ```
@@ -391,35 +373,4 @@ gene_list <- symbolall[x$ix]
 # use tmod package; note focus on immune related processes
 res_SZA_SZ <- tmodCERNOtest(gene_list)
 res_SZA_SZ
-```
-
-```{r}
-symbolall[SZAvsSZ > 4]
-```
-
-### GSEA for differentially expressed genes
-
-```{r}
-x <- sort(MDDvsSZA, index.return = T, decreasing = T)
-gene_list <- symbolall[x$ix]
-
-# use tmod package; note focus on immune related processes
-res <- tmodCERNOtest(gene_list)
-res
-```
-
-```{r}
-BP[, 1:J]
-```
-
-```{r}
-MDD[, 1:J]
-```
-
-```{r}
-SZA[, 1:J]
-```
-
-```{r}
-SZ[, 1:J]
 ```
