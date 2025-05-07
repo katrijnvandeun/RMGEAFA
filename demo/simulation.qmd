@@ -25,8 +25,12 @@ source("../R/simulation.R")
 Run all simulation and join the results:
 
 ```{r}
-simulation_results <- run_simulations()
-DATASET <- join_simulation_results(simulation_results)
+simulation_G4R2 <- run_simulationG4R2()
+simulation_G4R4 <- run_simulationG4R4()
+simulation_G2R2 <- run_simulationG2R2()
+simulation_G2R4 <- run_simulationG2R4()
+
+DATASET <- join_simulation_results(simulation_G2R2, simulation_G2R4, simulation_G4R2, simulation_G4R4)
 ```
 
 Get structured data:
