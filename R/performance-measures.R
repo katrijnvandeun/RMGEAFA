@@ -21,7 +21,8 @@ performancemeasures <- function(selmodel, P1, P2, R, G) {
     L1 <- (selmodel$loadings[[1]][, perm[p, ]]) %*% diag(corsign)
     diffP1 <- sum(rowSums(abs(P1 - L1)))
     # P2
-    corsign <- sign(diag(cor(P2, selmodel$loadings[[2]][, perm[p, ]])))
+    #!!!!!sign invariance NOT over groups
+    #corsign <- sign(diag(cor(P2, selmodel$loadings[[2]][, perm[p, ]])))
     L2 <- (selmodel$loadings[[2]][, perm[p, ]]) %*% diag(corsign)
     diffP2 <- sum(rowSums(abs(P2 - L2)))
     absdiff[p] <- abs(diffP1) + abs(diffP2)
