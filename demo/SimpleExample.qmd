@@ -1,0 +1,267 @@
+---
+title: "Didactical Example"
+format: html
+editor: visual
+---
+
+# Data Preparation
+
+## Imports
+
+```{r}
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+rm(list = ls())
+```
+
+```{r}
+library("MASS") # our functions use mvrnorm in the random initialization
+```
+
+## Creating the small data example
+
+We rely on the simulation setup by De Roover et al. to create data for R=2 groups and G=3 components with a difference in the position of cross loadings between group 3 and groups 1 & 2 (groups 1 & 2 have same loadings):
+
+```{r}
+R <- 2 # 2 groups
+G <- 3 # 3 groups
+CL <- .2 #value cross loading
+# P1
+p1g1 <- c(rep(sqrt(.6), 4),rep(CL, 1), rep(0, 3))
+p2g1 <- c( rep(CL,1), rep(0, 3),rep(sqrt(.6), 4))
+P1 <- cbind(p1g1, p2g1)
+
+# P2
+P2 <- P1
+
+# P3
+p1g3 <- c(rep(sqrt(.6), 4), 0, 0, 0, rep(CL, 1))
+p2g3 <- c(rep(0, 3), rep(CL, 1), rep(sqrt(.6), 4))
+P3 <- cbind(p1g3, p2g3)
+
+#all
+cbind(P1,P2,P3)
+
+#var-cov
+PSI1 <- diag(1 - rowSums(P1^2))
+SIGMA1 <- P1 %*% t(P1) + PSI1
+PSI2 <- diag(1 - rowSums(P2^2))
+SIGMA2 <- P2 %*% t(P2) + PSI2
+PSI3 <- diag(1 - rowSums(P3^2))
+SIGMA3 <- P3 %*% t(P3) + PSI3
+
+#generate data
+N <- 50
+data1 <- mvrnorm(n = N, mu = rep(0, 8), Sigma = SIGMA1, empirical = TRUE)
+data2 <- mvrnorm(n = N, mu = rep(0, 8), Sigma = SIGMA2, empirical = TRUE)
+data3 <- mvrnorm(n = N, mu = rep(0, 8), Sigma = SIGMA3, empirical = TRUE)
+DATA <- list(data1, data2, data3)
+  
+```
+
+# Regularized MultiGroup Approximate EFA
+
+## Imports
+
+```{r}
+source("../R/initial-loadings.R")
+source("../R/multistart.R")
+source("../R/pstr.R")
+source("../R/joint-spca-finalizing.R")
+source("../R/is-jspca.R")
+source("../R/seqstrategy.R")
+source("../R/performance-measures.R")
+```
+
+## Set seed
+
+```{r}
+set.seed(1808)
+```
+
+## Step 1: MODEL SELECTION, determine K and lambda
+
+```{r}
+modelsel <- seqstrategy(DATA, R = 2, SP = 0.9, ALPH = 0.1, THR = 0.05) # sequential strategy
+```
+
+Inspect results:
+
+```{r}
+modelsel$details
+modelsel$cardinality # selected K
+modelsel$lambda # selected lambda
+```
+
+## Step 2: OBTAIN ESTIMATES FOR SELECTED MODEL using multistart
+
+```{r}
+selmodel <- MULTISTART(DATA, R, CARD = modelsel$cardinality, LAMBDA = modelsel$lambda, SP = seq(0.1, 0.9, by = 0.1), ALPH = seq(0.1, 0.9, by = 0.1), MAXITER = 20, EPS = 1e-4)
+L <- selmodel$loadings
+L_table <- round(cbind(L[[1]], L[[2]], L[[3]]), 2)
+L_table
+```
+
+## Save results
+
+Write model selection results to csv file:
+
+```{r}
+write.table(modelsel$details, file = "SimpleExample_modelselection.txt", dec = ",", sep = "\t")
+```
+
+Write loadings to csv:
+
+```{r}
+write.table(L_table, file = "SimpleExampleQOL_loadings_RegMGEFA.txt", dec = ",", sep = "\t")
+```
+
+# MPLUS analysis
+
+## Set seed
+
+```{r}
+library(MplusAutomation)
+set.seed(510)
+```
+
+## Alignment analysis
+
+```{r}
+#Create data suitable for MPLUS
+DATA <- cbind(data.frame(rbind(data1,data2,data3)),rep(c(1:G),rep(50,G)))
+colnames(DATA) <- c("v1","v2","v3","v4","v5","v6","v7","v8","G")
+
+#Create input file
+varstr <- paste("usevariables = v1 - v8; GROUPING = G(1=group1 2=group2 3=group3);")
+modelstr <- paste("f1-f2 BY v1-v8 (*1);")
+m.penefa <- mplusObject(
+  TITLE = "Exploratory Penalized Factor Analysis",
+  VARIABLE = varstr,
+  ANALYSIS = "alignment = free;",
+  MODEL = modelstr,
+  OUTPUT = "align;",
+  rdata = DATA)
+
+#MPLUS alignment analysis
+m.penefa.fit <- mplusModeler(m.penefa, dataout="SimpleExample.dat", 
+                             modelout="SimpleExample.inp",run = TRUE, 
+                             writeData = "ifmissing")
+
+#POSTPROCESS MPLUS OUTPUT
+loadingsparams <- m.penefa.fit$results$parameters$unstandardized
+loadings <- list()
+for (g in 1:G){
+  loadings[[g]] <- P1
+  for (r in 1:R){
+    strR <- paste("F",r,".BY",sep="")
+    strG <- paste("GROUP",g,sep="")
+    index <- loadingsparams$paramHeader==strR & loadingsparams$Group==strG
+    loadings[[g]][,r] <- as.numeric(loadingsparams$est[index])
+  }
+}
+
+```
+
+Write output to csv:
+
+```{r}
+write.table(loadingsparams, file = "SimpleExampleMPLUS_loadingparams.txt", dec = ",", sep = "\t")
+L_table_mplus <- round(cbind(loadings[[1]], loadings[[2]], loadings[[3]]), 2)
+L_table_mplus
+write.table(L_table_mplus, file = "SimpleExampleMPLUS_loadings.txt", dec = ",", sep = "\t")
+```
+
+## Regularization path
+
+### LSLX analysis
+
+```{r}
+library(lslx)
+set.seed(1810)
+```
+
+### Regularization
+
+```{r}
+data_lslx <- data.frame(rbind(data1,data2,data3))
+grouplabel <- as.factor(rep(c("G1","G2","G3"),c(rep(50,G))))
+data_lslx <- data.frame(cbind(data_lslx,grouplabel))
+samplex <- seq(1:8)
+line3 <-paste("f1:~> ",paste("X",samplex[1:8],collapse = "+",sep = ""))
+line4 <-paste("f2:~> ",paste("X",samplex[1:8],collapse = "+",sep = ""))
+linex <- paste("f1  <=>  f2")
+line5 <-paste("f1  <=> fix(1)* f1")
+line6 <-paste("f2  <=> fix(1)* f2")
+model_mgfa <- paste(paste(line3,line4,linex,line5,line6,collapse = "\n", sep="\n"),collapse = "\n","\n")
+
+#run lxlx analysis: NO alignment
+lslx_mgfa <- lslx$new(model = model_mgfa,
+                      data = data_lslx,
+                      group_variable = "grouplabel")#,
+lslx_mgfa$fit(penalty_method = "mcp", 
+              lambda_grid = seq(.01, .60, .01), 
+              delta_grid = c(1.5, 3.0, Inf))
+lslx_mgfa$summarize(selector = "bic", interval = FALSE)
+lslxcoefs <- lslx_mgfa$extract_coefficient(selector = "bic")
+lslx_mgfa$test_coefficient(selector="bic")
+
+#run lxlx analysis: Alignment to GROUP1
+lslx_mgfa <- lslx$new(model = model_mgfa,
+                      data = data_lslx,
+                      group_variable = "grouplabel",
+                      reference_group = "G1")#,
+lslx_mgfa$penalize_heterogeneity(
+  block = c("y<-f","y<-1"),
+  group = "G2"
+)
+lslx_mgfa$penalize_heterogeneity(
+  block = c("y<-f","y<-1"),
+  group = "G3"
+)
+lslx_mgfa$fit(penalty_method = "mcp", 
+              lambda_grid = seq(.01, .60, .01), 
+              delta_grid = c(1.5, 3.0, Inf))
+lslx_mgfa$summarize(selector = "bic", interval = FALSE, include_faulty = T)
+lslxcoefs <- lslx_mgfa$extract_coefficient(selector = "bic", include_faulty = T)
+
+error_count <- 0
+
+result <- tryCatch(
+  {
+    lslx_mgfa$summarize(selector = "bic")   # or whichever call triggers the error
+  },
+  error = function(e) {
+    if (grepl("PL estimate under EACH penalty level.*nonconverged result",
+              conditionMessage(e),
+              ignore.case = TRUE)) {
+      error_count <<- error_count + 1
+      message("Detected the nonconverged-all-lambda error.")
+      return(NULL)
+    } else {
+      stop(e)  # rethrow other errors
+    }
+  }
+)
+
+error_count
+lslx_mgfa$test_coefficient(selector="bic", include_faulty = T)
+```
+
+```{r}
+loadings <- list()
+for (g in 1:G){
+  loadings[[g]] <- P1
+  for (r in 1:R){
+    strRG <- paste("<-f",r,"/",levels(grouplabel)[g],sep="")
+    index <- grep(strRG,names(lslxcoefs))
+    if (g==1){#reference group
+      loadings[[g]][,r] <- lslxcoefs[index]
+    } else {
+      loadings[[g]][,r] <- lslxcoefs[index]+loadings[[1]][,r] 
+    }
+  }
+}
+L_table_lslx <- round(cbind(loadings[[1]], loadings[[2]], loadings[[3]]), 2)
+L_table_lslx
+write.table(L_table_lslx, file = "SimpleExampleLSLX_loadings.txt", dec = ",", sep = "\t")
+```
