@@ -34,11 +34,41 @@ OSRI <- read.csv("../data/OSRI_osfDeRoover.csv", sep = ";")
 table(OSRI$orientation)
 ```
 
-The total sample size matches what is reported in De Roover & Vermunt (2019) but group sizes not. Upon checking if they erroneously used one of the questionnaire items as the indicator of sexual orientation, this appeared to be the case (the scores on Q1 were used as the indicator of sexual orientation). This mistake probably also explains why their results deviate strongly from what can be expected based upon the design of the questionnaire.
+The total sample size matches what is reported in De Roover & Vermunt (2019) but group sizes not. Upon checking if they erroneously used one of the questionnaire items as the indicator of sexual orientation, this appeared to be the case (the scores on Q1 were used as the indicator of sexual orientation). This mistake probably also explains why their results deviate strongly from what can be expected based upon the design of the questionnaire. To make sure correct data are used, we worked on the original data availabe at <https://openpsychometrics.org/_rawdata/>.
+
+## Loading the original data
+
+```{r}
+OSRI <- read.csv("../data/OSRI_original.csv", sep = ";")
+head(OSRI)
+```
+
+## Select sample using criteria De Roover
+
+```{r}
+#Englisch speaking
+OSRI_english <- OSRI[OSRI$engnat==1,]
+#valid orientations
+OSRI_english_valid <- OSRI_english[OSRI_english$orientation>0 & OSRI_english$orientation<6,]
+#complete cases only
+OSRI_clean <- OSRI_english_valid
+for (j in c(1:44,54)){
+  OSRI_clean <- OSRI_clean[OSRI_clean[,j]>0 & OSRI_clean[,j]<6,]
+}
+#first 2500
+OSRI <- OSRI_clean[1:2500,]
+#Select OSRI items + sexual orientation variable
+OSRI <- OSRI[,c(1:44,54)]
+```
+
+```{r}
+N <- table(OSRI$orientation) 
+N
+```
 
 ## Data wrangling
 
-Group by orientation and standardize per group. Note: 1= Heterosexual, 2 = Bisexual, 3 = Homosexual, 4 = Asexual, 5 = Other.
+Group by orientation and standardize per group. Note: 1= Heterosexual, 2 = Bisexual, 3 = Homosexual, 4 = Asexual, 5 = Other. 
 
 ```{r}
 matrix1 <- as.matrix(OSRI[OSRI$orientation == 1, 1:44])
@@ -51,18 +81,29 @@ matrix4 <- as.matrix(OSRI[OSRI$orientation == 4, 1:44])
 matrix4 <- scale(matrix4, center = TRUE, scale = TRUE)
 matrix5 <- as.matrix(OSRI[OSRI$orientation == 5, 1:44])
 matrix5 <- scale(matrix5, center = TRUE, scale = TRUE)
+groups <- 5
 
+#DATA IN MG-REAFA FORMAT
 DATA <- list(matrix1, matrix2, matrix3, matrix4, matrix5)
-G <- 5
+
+#DATA IN MPLUS/LSLX FORMAT
+groupingvar <- rep(c(1:length(N)),rep(N))
+data_osri_lslx_mplus <- data.frame(cbind(DATA,groupingvar))
+names(data_osri_lslx_mplus)[1:44] <- c("X1","X2","X3","X4","X5","X6","X7","X8","X9","X10",
+                                 "X11","X12","X13","X14","X15","X16","X17","X18","X19","X20",
+                                 "X21","X22","X23","X24","X25","X26","X27","X28","X29","X30",
+                                 "X31","X32","X33","X34","X35","X36","X37","X38","X39","X40",
+                                 "X41","X42","X43","X44")
+names(data_osri_lslx_mplus)[45] <- "G"
 ```
 
 We set the number of factors in correspondence with the design of the questionnaire (2 factors):
 
 ```{r}
-R <- 2
+factors <- 2
 ```
 
-# Modelling
+# Modelling: MG-REAFA
 
 ## Imports
 
@@ -169,7 +210,7 @@ write.table(model$details, file = "ReanalysisOSRIGeneratedFiles/OSRI_modelselect
 Write loadings to csv:
 
 ```{r}
-write.table(Loadings, file = "ReanalysisOSRIGeneratedFiles/OSRI_loadings_RegMGEFA.txt", dec = ",", sep = "\t")
+write.table(Loadings, file = "ReanalysisOSRIGeneratedFiles/OSRI_loadings_MGREAFA.txt", dec = ",", sep = "\t")
 ```
 
 Save concatenaed loadings over groups and per factor:
@@ -178,3 +219,9 @@ Save concatenaed loadings over groups and per factor:
 save(concL1, file = "ReanalysisOSRIGeneratedFiles/OSRI_concl1.Rdata")
 save(concL1, file = "ReanalysisOSRIGeneratedFiles/OSRI_concl2.Rdata")
 ```
+
+# Modelling: MPLUS AESEM
+
+# Modelling: LSLX
+
+WARNING: The following analysis may run very slowly (24 hours on a Dell Latitude 3420)
