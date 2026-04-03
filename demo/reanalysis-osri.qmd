@@ -68,7 +68,7 @@ N
 
 ## Data wrangling
 
-Group by orientation and standardize per group. Note: 1= Heterosexual, 2 = Bisexual, 3 = Homosexual, 4 = Asexual, 5 = Other. 
+Group by orientation and standardize per group. Note: 1= Heterosexual, 2 = Bisexual, 3 = Homosexual, 4 = Asexual, 5 = Other.
 
 ```{r}
 matrix1 <- as.matrix(OSRI[OSRI$orientation == 1, 1:44])
@@ -88,7 +88,8 @@ DATA <- list(matrix1, matrix2, matrix3, matrix4, matrix5)
 
 #DATA IN MPLUS/LSLX FORMAT
 groupingvar <- rep(c(1:length(N)),rep(N))
-data_osri_lslx_mplus <- data.frame(cbind(DATA,groupingvar))
+DATA_tmp<-rbind(matrix1, matrix2, matrix3, matrix4, matrix5)
+data_osri_lslx_mplus <- data.frame(cbind(DATA_tmp,groupingvar))
 names(data_osri_lslx_mplus)[1:44] <- c("X1","X2","X3","X4","X5","X6","X7","X8","X9","X10",
                                  "X11","X12","X13","X14","X15","X16","X17","X18","X19","X20",
                                  "X21","X22","X23","X24","X25","X26","X27","X28","X29","X30",
@@ -166,7 +167,7 @@ Here, we focus on inpecting the similarity of the loadings over groups. First, w
 ```{r}
 concL1 <- c()
 concL2 <- c()
-for (g in 1:G) {
+for (g in 1:groups) {
   concL1 <- cbind(concL1, L[[g]][, 1])
   concL2 <- cbind(concL2, L[[g]][, 2])
 }
@@ -181,7 +182,7 @@ To get an indication of the extent of measure noninvariance of each of the items
 
 ```{r}
 round(sqrt(diag(var(t(concL1)))) + sqrt(diag(var(t(concL2)))), 3)
-# 10 items displaying noninvariance:32, 12, 14, 25, 22, 20, 13, 21, 11, 38
+# Large(r) noninvariance: 24, 32, 31, 37,11, 13, 6, 
 ```
 
 We also check if there are items that load (almost) 0 on both factors as this indicates that these should probably be removed from the questionnaire.
@@ -189,14 +190,14 @@ We also check if there are items that load (almost) 0 on both factors as this in
 ```{r}
 index <- 1:44
 index[rowSums(abs(cbind(concL1, concL2))) < 0.05]
-# items 1 and 7
+# none
 ```
 
 The following items have cross loadings and therefore deviate from the expected structure (each item loading only on one of the two factors):
 
 ```{r}
 index[abs(concL1) > 0.05 & abs(concL2) > 0.05]
-# items 9,13,21,22,34
+# items 8 11 12 19 20 21 25 31 33 37
 ```
 
 ## Save results
