@@ -29,7 +29,7 @@ MASS, matlib, psych, tmod, dplyr, stringr, tibble, BiocManager, haven, lslx, Mpl
 You can install them by running:
 
 ``` r
-install.packages(c("MASS", "matlib", "psych", "tmod", "dplyr", "stringr", "tibble", "BiocManager", "haven","lslx","MplusAutomation"), repos = "http://cran.us.r-project.org")
+install.packages(c("MASS", "matlib", "psych", "tmod", "dplyr", "stringr", "tibble", "BiocManager", "haven", "lslx", "MplusAutomation"), repos = "http://cran.us.r-project.org")
 ```
 
 Note that it is assumed that your working folder is the root folder of
