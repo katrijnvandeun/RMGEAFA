@@ -128,7 +128,7 @@ source("../R/performance-measures.R")
 To determine the number of nonzero loadings and the strength of fusion of the loadings between the five groups, the sequential model selection strategy is used. Note that this takes a bit of time (a few minutes).
 
 ```{r}
-model <- seqstrategy(DATA, R = R, SP = 0.9, ALPH = 0.1, THR = 0.05) # sequential strategy
+model <- seqstrategy(DATA, R = factors, SP = 0.9, ALPH = 0.1, THR = 0.05, TOL = 2) # sequential strategy
 ```
 
 We inspect the results as follows:
@@ -146,7 +146,7 @@ Note that the selected number of nonzero loadings is close to what can be expect
 To save computing time, the sequential strategy uses a single starting value. Therefore, for the selected model, we perform an additional analysis that is based on multiple starting values. This analysis takes a few minutes.
 
 ```{r}
-selmodel <- MULTISTART(DATA, R, CARD = model$cardinality, LAMBDA = model$lambda, SP = seq(0.1, 0.9, by = 0.1), ALPH = seq(0.1, 0.9, by = 0.1), MAXITER = 20, EPS = 1e-4)
+selmodel <- MULTISTART(DATA, R=factors, CARD = model$cardinality, LAMBDA = model$lambda, SP = seq(0.1, 0.9, by = 0.1), ALPH = seq(0.1, 0.9, by = 0.1), MAXITER = 20, EPS = 1e-4)
 L <- selmodel$loadings
 Loadings <- round(cbind(L[[1]], L[[2]], L[[3]], L[[4]], L[[5]]), 2)
 colnames(Loadings) <- c("He1","He2","Bi1","Bi2","Ho1","Ho2","A1","A2","O1","O2")
@@ -222,6 +222,138 @@ save(concL1, file = "ReanalysisOSRIGeneratedFiles/OSRI_concl2.Rdata")
 
 # Modelling: MPLUS AESEM
 
+To run MPLUS, a recent version of mplus is needed. Furthermore, the MPLUSautomation package has to be installed.
+
+```{r}
+library(MplusAutomation)
+varstr <- paste("usevariables = x1 - x44; GROUPING = G(1=group1 2=group2 3=group3 4=group4 5=group5);")
+modelstr <- paste("f1-f2 BY x1-x44 (*1);")
+
+m.penefa <- mplusObject(
+  TITLE = "Exploratory Penalized Factor Analysis",
+  VARIABLE = varstr,#"usevariables = v1 - v20; GROUPING = G(1=group1 2=group2);",
+  ANALYSIS = "alignment = free; ROTATION = GEOMIN (ORTHOGONAL);",
+  MODEL = modelstr,
+  OUTPUT = "standardized;",#standardized loadings (instead of align) to compare with rmgeafa
+  rdata = data_osri_lslx_mplus)
+
+m.penefa.fit <- mplusModeler(m.penefa, dataout="osri.dat", 
+                             modelout="osri.inp",run = TRUE, 
+                             writeData = "ifmissing")
+
+#POSTPROCESS MPLUS OUTPUT
+loadingsparams <- m.penefa.fit$results$parameters$stdyx.standardized
+loadings <- list()
+card_mplus <- c()
+for (g in 1:groups){
+  loadings[[g]] <- matrix(nrow=44,ncol=factors)
+  for (r in 1:factors){
+    strR <- paste("F",r,".BY",sep="")
+    strG <- paste("GROUP",g,sep="")
+      index <- loadingsparams$paramHeader==strR & loadingsparams$Group==strG
+      loadings[[g]][,r] <- as.numeric(loadingsparams$est[index])
+#      if (dim(loadingsparams)[2]>4){
+#        loadings[[g]][loadingsparams$pval[index] > 0.05,r] <- 0
+#    }
+  }
+  card_mplus <- rbind(card_mplus,colSums(abs(loadings[[g]])>0.05))#count nr of zero loadings
+}
+mplusmodel <- list()
+mplusmodel$loadings <- loadings
+#permutation to align with rmgeafa: same for all groups!
+Loadings_perm <- round(cbind(loadings[[1]][,c(2,1)], loadings[[2]][,c(2,1)], loadings[[3]][,c(2,1)],
+                             loadings[[4]][,c(2,1)],loadings[[5]][,c(2,1)]), 2)
+
+#Write loadings to csv
+write.table(Loadings_perm, file = "OSRI_MPLUS.txt", dec = ",", sep = "\t")
+```
+
 # Modelling: LSLX
 
+To run the code here below, the lslx package needs to be installed (available on CRAN).
+
 WARNING: The following analysis may run very slowly (24 hours on a Dell Latitude 3420)
+
+```{r}
+library(lslx)
+
+#specify multigroup efa model with penalized loadings
+line1 <-paste("f1:~> ",paste("X",c(1:44),collapse = "+",sep = ""))
+line2 <-paste("f2:~> ",paste("X",c(1:44),collapse = "+",sep = ""))
+line3 <- paste("f1  <=>  f2")
+line4 <-paste("f1  <=> fix(1)* f1")
+line5 <-paste("f2  <=> fix(1)* f2")
+model_mgfa <- paste(paste(line1,line2,line3,line4,line5,collapse = "\n", sep="\n"),collapse = "\n","\n")
+
+#run lxlx analysis
+start.time <- Sys.time()
+lslx_mgfa <- lslx$new(model = model_mgfa,
+                      data = data_osri_lslx_mplus,
+                      group_variable = "G",
+                      reference_group = "1")#,
+lslx_mgfa$penalize_heterogeneity(
+  block = c("y<-f","y<-1"),
+  group = "2"
+)
+lslx_mgfa$penalize_heterogeneity(
+  block = c("y<-f","y<-1"),
+  group = "3"
+)
+lslx_mgfa$penalize_heterogeneity(
+  block = c("y<-f","y<-1"),
+  group = "4"
+)
+lslx_mgfa$penalize_heterogeneity(
+  block = c("y<-f","y<-1"),
+  group = "5"
+)
+lslx_mgfa$fit(penalty_method = "mcp", 
+              lambda_grid = seq(.01, .60, .01), 
+              delta_grid = c(1.5, 3.0, Inf))
+end.time <- Sys.time()
+time.taken <- end.time - start.time
+time.taken #Time difference of 23 hours
+save(lslx_mgfa,file="lslxOSRI.Rda")
+
+load("lslxOSRI.Rda")
+#lslx_mgfa$free_heterogeneity(block = "y <- f")
+lslx_mgfa$summarize(selector = "bic", interval = FALSE)
+lslxcoefs <- lslx_mgfa$test_coefficient(selector = "bic")
+
+#POSTPROCESS results
+loadings <- list()
+pvals <- list()
+card_lslx <- c()
+for (g in 1:groups){
+  loadings[[g]] <- matrix(nrow=44,ncol=factors)
+  pvals[[g]] <- matrix(nrow=44,ncol=factors)
+  for (r in 1:factors){
+    strRG <- paste("<-f",r,"/",g,sep="")
+    index <- grep(strRG,rownames(lslxcoefs))
+    if (g==1){#reference group
+      loadings[[g]][,r] <- lslxcoefs$estimate[index]
+    } else {
+      loadings[[g]][,r] <- lslxcoefs$estimate[index]+loadings[[1]][,r] 
+    }
+#    pvals[[g]][,r] <- lslxcoefs$p_value[index]
+  }
+  print(colSums(abs(loadings[[g]])<0.01))#count nr of zero loadings
+  print(colSums(abs(loadings[[g]])<0.01 | pvals[[g]]>0.05))#count nr of zero loadings
+    #card_lslx <- rbind(card_lslx,colSums(abs(loadings[[g]])>0.05 | pvals[[g]]<0.05))#count nr of zero loadings
+  card_lslx <- rbind(card_lslx,colSums(abs(loadings[[g]])>0.05))#count nr of zero loadings
+}
+
+L_table_lslx <- round(cbind(loadings[[1]], loadings[[2]], loadings[[3]],
+                      loadings[[4]], loadings[[5]]), 2)
+L_table_lslx
+
+#sign conversion+permutation for easier interpretation
+L_table_lslx[,c(1,3,5,7,9)] <- -1*L_table_lslx[,c(1,3,5,7,9)]
+L_table_lslx[,c(1:10)] <- L_table_lslx[,c(2,1,4,3,6,5,8,7,10,9)]
+
+#Write loadings to csv
+write.table(L_table_lslx, file = "OSRI_LSLX.txt", dec = ",", sep = "\t")
+#fit indices
+lslx_mgfa$extract_fit_index(selector="bic")
+
+```
