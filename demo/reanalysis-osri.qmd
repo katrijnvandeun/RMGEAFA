@@ -205,20 +205,20 @@ index[abs(concL1) > 0.05 & abs(concL2) > 0.05]
 Write model selection results to csv:
 
 ```{r}
-write.table(model$details, file = "ReanalysisOSRIGeneratedFiles/OSRI_modelselection.txt", dec = ",", sep = "\t")
+write.table(model$details, file = "OSRI_modelselection.txt", dec = ",", sep = "\t")
 ```
 
 Write loadings to csv:
 
 ```{r}
-write.table(Loadings, file = "ReanalysisOSRIGeneratedFiles/OSRI_loadings_MGREAFA.txt", dec = ",", sep = "\t")
+write.table(Loadings, file = "OSRI_loadings_MGREAFA.txt", dec = ",", sep = "\t")
 ```
 
 Save concatenaed loadings over groups and per factor:
 
 ```{r}
-save(concL1, file = "ReanalysisOSRIGeneratedFiles/OSRI_concl1.Rdata")
-save(concL1, file = "ReanalysisOSRIGeneratedFiles/OSRI_concl2.Rdata")
+save(concL1, file = "OSRI_concl1.Rdata")
+save(concL1, file = "OSRI_concl2.Rdata")
 ```
 
 # Modelling: MPLUS AESEM
