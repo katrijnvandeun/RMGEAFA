@@ -34,7 +34,7 @@ OSRI <- read.csv("../data/OSRI_osfDeRoover.csv", sep = ";")
 table(OSRI$orientation)
 ```
 
-The total sample size matches what is reported in De Roover & Vermunt (2019) but group sizes not. Upon checking if they erroneously used one of the questionnaire items as the indicator of sexual orientation, this appeared to be the case (the scores on Q1 were used as the indicator of sexual orientation). This mistake probably also explains why their results deviate strongly from what can be expected based upon the design of the questionnaire. To make sure correct data are used, we worked on the original data availabe at <https://openpsychometrics.org/_rawdata/>.
+The total sample size matches what is reported in De Roover & Vermunt (2019) but group sizes not. Upon checking if they erroneously used one of the questionnaire items as the indicator of sexual orientation, this appeared to be the case (it seems the scores on Q1 were used as the indicator of sexual orientation). This mistake probably also explains why their results deviate strongly from what can be expected based upon the design of the questionnaire. To make sure correct data are used, we worked on the original data availabe at <https://openpsychometrics.org/_rawdata/>.
 
 ## Loading the original data
 
