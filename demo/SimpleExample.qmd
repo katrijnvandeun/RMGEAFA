@@ -189,7 +189,7 @@ data_lslx <- data.frame(cbind(data_lslx,grouplabel))
 samplex <- seq(1:8)
 line3 <-paste("f1:~> ",paste("X",samplex[1:8],collapse = "+",sep = ""))
 line4 <-paste("f2:~> ",paste("X",samplex[1:8],collapse = "+",sep = ""))
-linex <- paste("f1  <=>  f2")
+linex <- paste("f1  <=>  0*f2")  #orthogonal: f1 <=>  0*f2
 line5 <-paste("f1  <=> fix(1)* f1")
 line6 <-paste("f2  <=> fix(1)* f2")
 model_mgfa <- paste(paste(line3,line4,linex,line5,line6,collapse = "\n", sep="\n"),collapse = "\n","\n")
@@ -198,9 +198,10 @@ model_mgfa <- paste(paste(line3,line4,linex,line5,line6,collapse = "\n", sep="\n
 lslx_mgfa <- lslx$new(model = model_mgfa,
                       data = data_lslx,
                       group_variable = "grouplabel")#,
-lslx_mgfa$fit(penalty_method = "mcp", 
+lslx_mgfa$fit(penalty_method = "lasso",    #try also with lasso
               lambda_grid = seq(.01, .60, .01), 
-              delta_grid = c(1.5, 3.0, Inf))
+              #delta_grid = c(1.5, 3.0, Inf)
+              )
 lslx_mgfa$summarize(selector = "bic", interval = FALSE)
 lslxcoefs <- lslx_mgfa$extract_coefficient(selector = "bic")
 lslx_mgfa$test_coefficient(selector="bic")
@@ -218,11 +219,12 @@ lslx_mgfa$penalize_heterogeneity(
   block = c("y<-f","y<-1"),
   group = "G3"
 )
-lslx_mgfa$fit(penalty_method = "mcp", 
+lslx_mgfa$fit(penalty_method = "mcp", #try also with lasso
               lambda_grid = seq(.01, .60, .01), 
-              delta_grid = c(1.5, 3.0, Inf))
-lslx_mgfa$summarize(selector = "bic", interval = FALSE, include_faulty = T)
-lslxcoefs <- lslx_mgfa$extract_coefficient(selector = "bic", include_faulty = T)
+              delta_grid = c(1.5, 3.0, Inf)
+              )
+lslx_mgfa$summarize(selector = "aic", interval = FALSE, include_faulty = T)
+lslxcoefs <- lslx_mgfa$extract_coefficient(selector = "aic", include_faulty = T)
 
 error_count <- 0
 
@@ -244,7 +246,7 @@ result <- tryCatch(
 )
 
 error_count
-lslx_mgfa$test_coefficient(selector="bic", include_faulty = T)
+lslx_mgfa$test_coefficient(selector="aic", include_faulty = T)
 ```
 
 ```{r}
@@ -265,3 +267,11 @@ L_table_lslx <- round(cbind(loadings[[1]], loadings[[2]], loadings[[3]]), 2)
 L_table_lslx
 write.table(L_table_lslx, file = "SimpleExampleLSLX_loadings.txt", dec = ",", sep = "\t")
 ```
+
+June 2, 2026.
+
+Following reviewer suggestions we 1) imposed orthogonality of f1 and f2 and, 2) tried out mcp + bic (default; reported in the paper), mcp + aic, lasso + bic, lasso + aic.
+
+1.  Lasso + bic resulted in shrunken loadings (0.77 -\> 0.67), correct recovery of cross loadings (with value 0.08) for groups 1 and 2 but too many (four in total) for group 3.
+2.  Lasso + aic resulted in less shrunken loadings (0.77 -\> 0.73), correct recovery of cross loadings (with value 0.15) for groups 1 and 2 but too many (four in total) for group 3.
+3.  MCP + aic perfectly recovers the results.
