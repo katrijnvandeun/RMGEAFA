@@ -551,9 +551,9 @@ simulation_LSLX <- function(groups, components, differences, CL, PLdecrease, Ill
         line6 <-paste("f2:~> ",paste("X",samplex[c(1:10,11:20)],collapse = "+",sep = ""))
         line7 <-paste("f3:~> ",paste("X",samplex[c(1:15,16:20)],collapse = "+",sep = ""))
         line8 <-paste("f4:~> ",paste("X",samplex[1:20],collapse = "+",sep = ""))
-        linex1 <- paste("f1  <=>  f2")
-        linex2 <- paste("f1  <=>  f3")
-        linex3 <- paste("f3  <=>  f2")
+        linex1 <- paste("f1  <=>  0*f2")
+        linex2 <- paste("f1  <=>  0*f3")
+        linex3 <- paste("f3  <=>  0*f2")
         line9 <-paste("f1  <=> fix(1)* f1")
         line10 <-paste("f2  <=> fix(1)* f2")
         line11 <-paste("f3  <=> fix(1)* f3")
@@ -594,7 +594,7 @@ simulation_LSLX <- function(groups, components, differences, CL, PLdecrease, Ill
         error_count<-0
         result <- tryCatch(
           {
-            lslx_mgfa$summarize(selector = "bic")   # or whichever call triggers the error
+            lslx_mgfa$summarize(selector = "aic")   # or whichever call triggers the error
           },
           error = function(e) {
             if (grepl("PL estimate under EACH penalty level.*nonconverged result",
@@ -614,7 +614,7 @@ simulation_LSLX <- function(groups, components, differences, CL, PLdecrease, Ill
           }
         )
         if (error_count==0){
-          lslxcoefs <- lslx_mgfa$extract_coefficient(selector = "bic", include_faulty = T)
+          lslxcoefs <- lslx_mgfa$extract_coefficient(selector = "aic", include_faulty = T)
           #POSTPROCESS lslx OUTPUT
           loadings <- list()
           for (g in 1:groups){
@@ -653,7 +653,7 @@ simulation_LSLX <- function(groups, components, differences, CL, PLdecrease, Ill
       result$nrpcs <- components
       result$nrgroups <- groups
       final_result <- rbind(final_result, result)
-      save(final_result, file = paste("LSLX_result25.RData",sep=''))
+      #save(final_result, file = paste("LSLX_result25.RData",sep=''))
     }
   }
   return(final_result)
