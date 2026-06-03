@@ -2,7 +2,7 @@
 library(MASS)
 library(MplusAutomation)
 library(lslx)
-source("performancemeasures.R")
+source("performance-measures.R")
 
 
 #' Valid Args
@@ -673,12 +673,12 @@ run_simulations <- function() {
   combs <- valid_args()
   combs_nr <- nrow(combs)
 
-  for (i in 25:25) {
+  for (i in 11:20) {
     comb <- combs[i, ]
     results[[i]] <- do.call(simulation_LSLX, as.list(as.numeric(comb)))
     ## save intermediary results
     res_lslx <- results[[i]]
-    save(res_lslx, file = paste("LSLX_result",i,".RData",sep=''))
+    save(res_lslx, file = paste("LSLX_resultR2",i,".RData",sep=''))
     ##
   }
   ##
@@ -686,7 +686,7 @@ run_simulations <- function() {
   return(results)
 }
 LSLXresuls <- run_simulations()
-save(LSLXresults,"LSLXresultsLoadings.RData")
+#save(LSLXresults,"LSLXresultsLoadings.RData")
 
 #' Join Simulation Results
 #' 
@@ -707,7 +707,7 @@ join_simulation_results <- function(results) {
   # one big dataframe for 2 groups 2 components
   dataG2R2 <- c()
   for (i in G2R2_ids){
-    load(paste("LSLX_result",i,".RData",sep=''))
+    load(paste("LSLX_resultR2",i,".RData",sep=''))
     dataG2R2 <- rbind(dataG2R2,res_lslx)
   }
   # one big dataframe for 2 groups 4 components
@@ -734,7 +734,8 @@ join_simulation_results <- function(results) {
   #get loading pattern conditions
   combs <- valid_args()
   nr_n <- 4
-  nrreplics <- rep(c(50*nr_n,10*nr_n),c(4,36))
+  #nrreplics <- rep(c(50*nr_n,10*nr_n),c(4,36))  #First revision
+  nrreplics <- rep(c(10*nr_n,10*nr_n),c(4,36))  #Second revision
   CLpattern <- rep(combs$CL,nrreplics)
   PLpattern <- rep(combs$PLdecrease,nrreplics)
   nrdiff <- rep(combs$differences,nrreplics)
