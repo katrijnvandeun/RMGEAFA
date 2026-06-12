@@ -561,6 +561,9 @@ simulation_LSLX <- function(groups, components, differences, CL, PLdecrease, Ill
         model_mgfa <- paste(paste(line5,line6,line7,line8,linex1,linex2,linex3,line9,line10,line11,line12,collapse = "\n", sep="\n"),collapse = "\n","\n")
       }
       
+      #print sample size to flag difficult condition
+      print(paste(N[i], " is the sample size")) 
+      
       #run lxlx analysis
       lslx_mgfa <- lslx$new(model = model_mgfa,
                             data = data_lslx,
@@ -673,7 +676,7 @@ run_simulations <- function() {
   combs <- valid_args()
   combs_nr <- nrow(combs)
 
-  for (i in 11:20) {
+  for (i in 25:25) {
     comb <- combs[i, ]
     results[[i]] <- do.call(simulation_LSLX, as.list(as.numeric(comb)))
     ## save intermediary results
@@ -713,19 +716,19 @@ join_simulation_results <- function(results) {
   # one big dataframe for 2 groups 4 components
   dataG2R4 <- c()
   for (i in G2R4_ids){
-    load(paste("LSLX_result",i,".RData",sep=''))
+    load(paste("LSLX_resultR2",i,".RData",sep=''))
     dataG2R4 <- rbind(dataG2R4,res_lslx)
   }
   # one big dataframe for 4 groups 2 components
   dataG4R2 <- c()
   for (i in G4R2_ids){
-    load(paste("LSLX_result",i,".RData",sep=''))
+    load(paste("LSLX_resultR2",i,".RData",sep=''))
     dataG4R2 <- rbind(dataG4R2,res_lslx)
   }
   # one big dataframe for 4 groups 4 components
   dataG4R4 <- c()
   for (i in G4R4_ids){
-    load(paste("LSLX_result",i,".RData",sep=''))
+    load(paste("LSLX_resultR2",i,".RData",sep=''))
     dataG4R4 <- rbind(dataG4R4,res_lslx)
   }
   
@@ -768,29 +771,31 @@ RESULT <- RESULT$RESULT
 TABLE <- matrix(nrow=16,ncol=3)  #%datasets no FP/FN for fusion and simple structure, everything correct
 colnames(TABLE) <- c('FUSION', 'SIMPLE S.', 'BOTH')
 
-TABLE_percondition <- matrix(0,nrow=40,ncol=10)
+TABLE_percondition <- c()
 #"n", "R", "G", "CL", "PL","NrDiff"
-colnames(TABLE_percondition) <- c('FUSION', 'SIMPLE S.', 'BOTH',"TUCKER","N","R","G","CL","PL","NrDiff")
 for (n in c(50,200,600,1000)){
+  TABLE_persamplesize <- matrix(0,nrow=40,ncol=9)
   RESULT_n <- RESULT[RESULT$n==n,]
   U <- 0
-  nrreplics <- 50
+  nrreplics <- 10
   for (c in 1:40){
   L <- U+1
   U <- L+nrreplics-1
-  TABLE_percondition[c,5:10] <- as.matrix(RESULT_n[L,8:13])
-  TABLE_percondition[c,1] <- sum(rowSums(RESULT_n[L:U,5:6]==0)==2)#ISF
-  TABLE_percondition[c,2] <- sum(rowSums(RESULT_n[L:U,1:4]==0)==4)#ISF
-  TABLE_percondition[c,3] <- sum(rowSums(RESULT_n[L:U,1:6]==0)==6)#ISF
+  TABLE_persamplesize[c,4:9] <- as.matrix(RESULT_n[L,9:14])
+  TABLE_persamplesize[c,1] <- sum(rowSums(RESULT_n[L:U,5:6]==0)==2)#fusion
+  TABLE_persamplesize[c,2] <- sum(rowSums(RESULT_n[L:U,1:4]==0)==4)#support
+  TABLE_persamplesize[c,3] <- sum(rowSums(RESULT_n[L:U,1:6]==0)==6)#both
+  }
+  TABLE_percondition <- rbind(TABLE_percondition,TABLE_persamplesize)
 }
-}
-TABLE_percondition[TABLE_percondition[,9]==0.4,]
+colnames(TABLE_percondition) <- c('FUSION', 'SIMPLE S.', 'BOTH',"N","R","G","CL","PL","NrDiff")
+TABLE_percondition[TABLE_percondition[,7]==0.2,]#first colums = nr of corr. recovered conditions
 
 #find number of datasets 100%correct: OVERALL
 fusion_ISF <- sum(rowSums(RESULT[,5:6]==0)==2)#ISF
 simple_ISF <- sum(rowSums(RESULT[,1:4]==0)==4)#ISF
 both_ISF <- sum(rowSums(RESULT[,1:6]==0)==6)#ISF
-TABLE[16,] <- c(fusion_ISF,simple_ISF,both_ISF)/2240
+TABLE[16,] <- c(fusion_ISF,simple_ISF,both_ISF)/(dim(RESULT)[1])
 
 #find number of datasets 100%correct: Per nr of groups
 Rvec <- c(2,4)
@@ -857,5 +862,5 @@ for (d in 1:2){
   both_ISF <- sum(rowSums(RESULT[sel,1:6]==0)==6)#ISF
   TABLE[13+d,] <- c(fusion_ISF,simple_ISF,both_ISF)/length(sel)
 }
-write.table(TABLE, file='LSLXsimresults.txt',sep = '\t',dec = ",")
+write.table(TABLE, file='LSLXsimresultsR2.txt',sep = '\t',dec = ",")
 
