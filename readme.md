@@ -1,4 +1,4 @@
-# MG-RGEAFA: multigroup regularized exploratory approximate factor analysis
+# MG-REAFA: multigroup regularized exploratory approximate factor analysis
 
 We provide a framework for exploratory factor analysis that allows
 analysis of (ultra)high-dimensional low-sample-size data with minimal
